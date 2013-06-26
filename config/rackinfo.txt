@@ -1,4 +1,4 @@
 # nodes of dptst-testing cluster.
-10.237.12.13 /dp/rack1
-10.237.12.14 /dp/rack2
-10.237.12.15 /dp/rack3
+10.0.3.105 /dp/rack1
+10.0.3.106 /dp/rack2
+10.0.3.107 /dp/rack3
