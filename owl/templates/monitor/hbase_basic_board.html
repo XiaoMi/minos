@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/task/">Tasks</a>
+        </li>
+        <li class="active">
+        <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/table/">Tables</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/regionserver/">Regionservers</a>
+        </li>
+    </ul>
+
+    <h4>SummaryMetric&nbsp;&nbsp;|&nbsp;&nbsp;<a href="/monitor/cluster/operation/{{ cluster.id }}">OperationMetric</a></h4>
+
+    <table class="table table-striped table-bordered">
+        <thead>
+        </thead>
+        <tbody>
+            <tr>
+                <td>cluster name</td>
+                <td>{{ cluster.name}}</a></td>
+            </tr>
+            <tr>
+                <td>hbase entry</td>
+                <td><a href="http://{{ basic_info.hbase_entry }}">{{ basic_info.hbase_entry}}</a></td>
+            </tr>
+            <tr>
+                <td>hdfs entry</td>
+                <td><a href="http://{{ basic_info.hdfs_entry }}">{{ basic_info.hdfs_entry}}</a></td>
+            </tr>
+            <tr>
+                <td>zookeeper entry</td>
+                <td><a href="/zktree/{{ basic_info.zk_entry}}/hbase/{{cluster.name}}">{{ basic_info.zk_entry}}</a></td>
+            </tr>
+            <tr>
+                <td>Read qps</td>
+                <td>{{ basic_info.read_qps}}</a></td>
+            </tr>
+            <tr>
+                <td>Write qps</td>
+                <td>{{ basic_info.write_qps}}</a></td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="row">
+        <div class="span12"><h3>QPS history</h3></div>
+    </div>
+    <div class="row">
+        <div class="span12">
+            <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                    allowtransparency="yes" class="span12" style="margin:0px;"
+                    height="350"
+                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ metrics.endpoint }}&item_keys={{ metrics.keys }}&big=12&height=300&graph_type=k"></iframe>
+        </div>
+    </div>
+{% endblock %}

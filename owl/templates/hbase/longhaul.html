@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load extended_filter %}
+
+{% block content %}
+    <h2> {{ longhaul.cluster }} {{ longhaul.table }} {{ longhaul.cf }} longhaul test</h2>
+    {{ longhaul.description }}
+    <div class="span12">
+        <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                allowtransparency="yes" class="span11" style="margin:0px;"
+                height="{% with total=counter_names|length %}{% widthratio total 1 200 %}{% endwith %}"
+                src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ endpoint }}&item_keys={{ counter_names|join:'|' }}&big=6&height=250"></iframe>
+    </div>
+{% endblock %}

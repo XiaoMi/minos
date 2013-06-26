@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="false" xmlns:log4j='http://jakarta.apache.org/log4j/'>
+  <root>
+    <level value="info" />
+    <appender-ref ref="ASYNC_DRFA" />
+    <appender-ref ref="ASYNC_SCRIBE" />
+  </root>
+
+  <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: [myid:%X{myid}] %m%n" />
+    </layout>
+  </appender>
+
+  <!--Daily rolling file appender-->
+  <appender name="DRFA" class="org.apache.log4j.DailyRollingFileAppender">
+    <param name="File" value="${zookeeper.log.dir}/zookeeper.log" />
+    <param name="DatePattern" value="'.'yyyy-MM-dd" />
+    <param name="Append" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: [myid:%X{myid}] %m%n" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_DRFA" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="DRFA"/>
+  </appender>
+
+  <!--Scribe appender-->
+  <appender name="SCRIBE" class="com.xiaomi.infra.base.log.AccessAppender">
+    <param name="Encoding" value="utf-8" />
+    <param name="ScribeHost" value="127.0.0.1" />
+    <param name="ScribePort" value="7915" />
+    <param name="ScribeCategory" value="hadoop_zookeeper_${zookeeper.cluster}" />
+    <param name="ShowIp" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: [myid:%X{myid}] %m" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_SCRIBE" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="SCRIBE"/>
+  </appender>
+</log4j:configuration>

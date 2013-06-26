@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="false" xmlns:log4j='http://jakarta.apache.org/log4j/'>
+  <root>
+    <level value="debug" />
+    <appender-ref ref="EventCounter" />
+    <appender-ref ref="ASYNC_DRFA" />
+    <appender-ref ref="ASYNC_SCRIBE" />
+  </root>
+
+  <logger name="org.apache.hadoop">
+    <level value="info" />
+    <appender-ref ref="ASYNC_DRFAI" />
+  </logger>
+
+  <category name="SecurityLogger">
+    <level value="debug" />
+    <appender-ref ref="ASYNC_AUDIT_DRFA" />
+    <appender-ref ref="ASYNC_AUDIT_SCRIBE" />
+  </category>
+
+  <!--EventCounter appender: sends counts of logging messages to hadoop metrics-->
+  <appender name="EventCounter" class="org.apache.hadoop.log.metrics.EventCounter" />
+
+  <appender name="CONSOLE" class="org.apache.log4j.ConsoleAppender">
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m%n" />
+    </layout>
+  </appender>
+
+  <!--Daily rolling file appender-->
+  <appender name="DRFA" class="com.xiaomi.infra.base.log.DailyRollingBySizeFileAppender">
+    <param name="File" value="${hbase.log.dir}/hbase.${hbase.pid}.log" />
+    <param name="DatePattern" value="'.'yyyy-MM-dd" />
+    <param name="Append" value="true" />
+    <param name="MaxFileSize" value="500MB" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m%n" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_DRFA" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="DRFA"/>
+  </appender>
+
+  <!--Daily rolling file appender for info log-->
+  <appender name="DRFAI" class="com.xiaomi.infra.base.log.DailyRollingBySizeFileAppender">
+    <param name="File" value="${hbase.log.dir}/hbase-info.${hbase.pid}.log" />
+    <param name="DatePattern" value="'.'yyyy-MM-dd" />
+    <param name="Append" value="true" />
+    <param name="MaxFileSize" value="500MB" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m%n" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_DRFAI" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="DRFAI"/>
+  </appender>
+
+  <!--Daily rolling file appender for auditing-->
+  <appender name="AUDIT_DRFA" class="org.apache.log4j.DailyRollingFileAppender">
+    <param name="File" value="${hbase.log.dir}/hbase-audit.${hbase.pid}.log" />
+    <param name="DatePattern" value="'.'yyyy-MM-dd" />
+    <param name="Append" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m%n" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_AUDIT_DRFA" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="AUDIT_DRFA"/>
+  </appender>
+
+  <!--Scribe appender-->
+  <appender name="SCRIBE" class="com.xiaomi.infra.base.log.AccessAppender">
+    <param name="Encoding" value="utf-8" />
+    <param name="ScribeHost" value="127.0.0.1" />
+    <param name="ScribePort" value="7915" />
+    <param name="ScribeCategory" value="hadoop_hbase_${hbase.cluster}" />
+    <param name="ShowIp" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_SCRIBE" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="SCRIBE"/>
+  </appender>
+
+  <!--Scribe appender for auditing-->
+  <appender name="AUDIT_SCRIBE" class="com.xiaomi.infra.base.log.AccessAppender">
+    <param name="Encoding" value="utf-8" />
+    <param name="ScribeHost" value="127.0.0.1" />
+    <param name="ScribePort" value="7915" />
+    <param name="ScribeCategory" value="hadoop_hbase_audit_${hbase.cluster}" />
+    <param name="ShowIp" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_AUDIT_SCRIBE" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="AUDIT_SCRIBE"/>
+  </appender>
+</log4j:configuration>

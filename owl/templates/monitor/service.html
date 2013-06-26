@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2> All clusters for {{ service.name }}. </h2>
+  <table class="table table-striped table-bordered">
+    <thead>
+      <tr>
+        <th>name</th>
+        <th>job (running/total tasks)</th>
+        <th>cluster entry</th>
+        <th>version</th>
+        <th>description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cluster in clusters %}
+        <tr>
+          <td>
+            {% if cluster.health %}
+              {% if cluster.last_status == 0 %}
+                <img src="{{ STATIC_URL }}/ok.png" width="24" alt="Big Boat"/>
+              {% elif cluster.last_status == 1 %}
+                <img src="{{ STATIC_URL }}/warn.png" width="24" alt="Big Boat"/>
+              {% endif %}
+            {% else %}
+              <img src="{{ STATIC_URL }}/alert.png" width="24" alt="Big Boat"/>
+            {% endif %}
+            <a href="/monitor/service/{{ cluster.service.id }}/">{{ cluster.service.name }}</a> / 
+            <a href="/monitor/cluster/{{ cluster.id }}/">{{ cluster.name }}</a>
+          </td>
+          <td>
+            {% for job in cluster.job_set.all %}
+              {% if job.health %}
+                {% if job.last_status == 0 %}
+                  <img src="{{ STATIC_URL }}/ok.png" width="24" alt="Big Boat"/>
+                {% elif job.last_status == 1 %}
+                  <img src="{{ STATIC_URL }}/warn.png" width="24" alt="Big Boat"/>
+                {% endif %}
+              {% else %}
+                <img src="{{ STATIC_URL }}/alert.png" width="24" alt="Big Boat"/>
+              {% endif %}
+              {{ job.name }} ({{ job.running_tasks_count }}/{{ job.total_tasks_count }})
+              <font color="red">{{ job.last_message }}</font>
+              <br>
+            {% endfor %}
+          </td>
+          <td>
+            <a href="http://{{cluster.entry}}">{{cluster.entry}}</a>
+          </td>
+          <td>{{ cluster.version }}</td>
+          <td>{{ cluster.description }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+artifact="%artifact"
+job_name="%job_name"
+run_dir="%run_dir"
+ticket_cache="%ticket_cache"
+params="%params"
+
+run_dir=`cd "$run_dir"; pwd`
+
+start_time=`date +%%Y%%m%%d-%%H%%M%%S`
+
+package_dir="$run_dir/package"
+output_file="$run_dir/log/${job_name}_${start_time}.out"
+jar_dir="$package_dir/jar"
+lib_dir="$package_dir/lib"
+
+java_home="/opt/soft/jdk"
+os_arch="amd64"
+
+# Set the class path
+classpath=""
+for jar in $jar_dir/*.jar; do
+  classpath=$classpath:$jar
+done
+export CLASSPATH=.:$classpath:$CLASSPATH
+
+# Set the ld library path
+ld_library_path=\
+$LD_LIBRARY_PATH:\
+$package_dir/lib:\
+$java_home/jre/lib/$os_arch:\
+$java_home/jre/lib/$os_arch/server
+export LD_LIBRARY_PATH=$ld_library_path
+
+# Set hdfs opts
+export LIBHDFS_OPTS="-Djava.security.krb5.conf=/etc/krb5-hadoop.conf -Dimpala.log.dir=$run_dir/log"
+
+# Set impala home
+export IMPALA_HOME=$package_dir
+
+# Set the ticket cache
+export KRB5CCNAME=$ticket_cache
+
+# Set the krb5 config file
+export KRB5_CONFIG=/etc/krb5-hadoop.conf
+
+ulimit -c unlimited
+
+exec $package_dir/bin/${job_name} $params 1>$output_file 2>&1

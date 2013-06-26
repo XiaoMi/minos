@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load extended_filter %}
+
+{% block content %}
+    <h3> business={{ business.business}} &nbsp;&nbsp;&nbsp;&nbsp;cluster={{ business.cluster}} </h3>
+
+    <div class="row">
+        <div id="sidebar" class="span1">
+            <ul class="nav nav-list affix">
+                <li><a href="/business">back to home</a></li>
+                <h6> Write HBase </h6>
+                {% for menu in write_menus %}
+                <li><a href="/business/{{business_id}}/{{menu.1}}">{{menu.0}}</a></li>
+                {% endfor %}
+                
+                <h6> Read HBase </h6>
+                {% for menu in read_menus %}
+                <li><a href="/business/{{business_id}}/{{menu.1}}">{{menu.0}}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="span11">
+            <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto" allowtransparency="yes" class="span11" style="margin:0px;" height="{% with total=metric_names|length|add:4 %}{% widthratio total 3 240 %}{% endwith %}" src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ endpoint }}&item_keys={{ metric_names|join:'|' }}&big=4&height=200"></iframe>
+        </div>
+    </div>
+
+{% endblock %}

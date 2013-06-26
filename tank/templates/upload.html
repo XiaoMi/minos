@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if upload_success %}
+  <div>
+    <p>Packakge {{ package.name }} upload successfully!</p>
+  </div>
+{% elif error_message %}
+  <p>Upload failed: {{ error_message }}</p>
+{% else %}
+  <div>
+    <form action="." method="post" enctype="multipart/form-data">
+      <table>
+        <tr>
+          <td>Artifact</td>
+          <td><input type="text" name="artifact" id="artifact"></td>
+        </tr>
+        <tr>
+          <td>Revison</td>
+          <td><input type="text" name="revision" id="revision"></td>
+        </tr>
+        <tr>
+          <td>File</td>
+          <td><input type="file" name="file" id="file"></td>
+        </tr>
+        <tr>
+          <td><input type="submit" value="Upload"></td>
+          <td><input type="reset" value="Reset"></td>
+        </tr>
+      </table>
+    </form>
+  </div>
+{% endif %}
+
+{% endblock %}

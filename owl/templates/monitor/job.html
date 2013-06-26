@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load extended_filter %}
+
+{% block content %}
+    <div class="row">
+        <div class="span12">
+            <ul class="breadcrumb">
+
+                <li>
+                    <a href="/monitor/service/{{ job.cluster.service.id }}"> {{ job.cluster.service.name }}</a> <span
+                        class="divider">/</span>
+                </li>
+                <li>
+                    <a href="/monitor/cluster/{{ job.cluster.id }}">{{ job.cluster.name }}</a> <span
+                        class="divider">/</span>
+                </li>
+                <li class="active"><a href="/monitor/job/{{ job.id }}/{{ chart_group.name }}">{{ job.name }}</a><span
+                        class="divider">/</span></li>
+                <li class="dropdown">
+                    <a href="#" data-toggle="dropdown" class="dropdown-toggle"> All Tasks <b
+                            class="caret bottom-up"></b></a>
+                    <ul class="dropdown-menu bottom-up pull-left">
+                        {% for task in tasks %}
+                            <li>
+                                <a href="/monitor/task/{{ task.id }}/{{ chart_group.name }}">{{ task.host }}:{{ task.port }}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+
+            </ul>
+        </div>
+    </div>
+
+    <div class="row">
+        <div id="sidebar" class="span1">
+            <ul class="nav nav-list affix">
+                {% for view_tag, view_cfg in metrics.metrics_view_config%}
+                <li><a href="#{{view_tag}}">{{view_tag}}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="span11">
+            {% for view_tag, view_cfg in metrics.metrics_view_config%}
+            <section id="{{view_tag}}">
+            <div class="row">
+                <div class="span11">
+                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto" allowtransparency="yes" class="span11" style="margin:0px;" height="{{ view_cfg|param_height}}" src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ metrics.endpoint|join:'|' }}&tagstrings=&item_keys={{ view_cfg|param_multikey_for_view }}&big=4&height=200"></iframe>
+                </div>
+            </div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}

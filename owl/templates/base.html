@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <title>OWL - Hadoop Cluster Monitor</title>
+    <link rel="stylesheet" href="{{ STATIC_URL }}bootstrap/css/bootstrap.css" media="screen">
+    <style>
+        body {
+            padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+        }
+
+        .ui-timepicker-div .ui-widget-header {
+            margin-bottom: 8px;
+        }
+
+        .ui-timepicker-div dl {
+            text-align: left;
+        }
+
+        .ui-timepicker-div dl dt {
+            height: 20px;
+        }
+
+        .ui-timepicker-div dl dd {
+            margin: -25px 0 10px 65px;
+        }
+
+        .ui-timepicker-div td {
+            font-size: 90%;
+        }
+
+    </style>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{{ STATIC_URL }}bootstrap/css/bootstrap-responsive.css" rel="stylesheet">
+    <script src="{{ STATIC_URL }}jquery/js/jquery-v1.8.3.js"></script>
+    <script src="{{ STATIC_URL }}bootstrap/js/bootstrap.js"></script>
+    <script src="{{ STATIC_URL }}highcharts/highcharts.js"></script>
+
+    <script src="{{ STATIC_URL }}jquery/js/jquery-ui-1.9.2.custom.min.js"></script>
+    <link rel="stylesheet" type="text/css"
+          href="{{ STATIC_URL }}jquery/css/jquery-ui-1.9.2.custom.min.css"/>
+
+    <script src="{{ STATIC_URL }}jquery/js/jquery-ui-timepicker-addon.js"></script>
+
+</head>
+
+
+<body data-target="#sidebar" data-spy="scroll">
+<div class="navbar navbar-inverse navbar-fixed-top">
+    <div class="navbar-inner">
+        <div class="container">
+            <a data-target=".nav-collapse" data-toggle="collapse" class="btn btn-navbar">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </a>
+            <a href="/" class="brand">OWL- Cluster Monitor </a>
+            <a href="/business" class="brand" >Business</a>
+            <a href="/hbase" class="brand" >Longhaul</a>
+            <p class="navbar-text pull-right">
+                {% if request.user.is_authenticated %}
+                    {{ request.user.username }}
+                    <a class="navbar-link" href="/accounts/logout">logout</a>
+                {% else %}
+                    <a class="navbar-link" href="/accounts/login">Login</a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    {% block content %}{% endblock %}
+    <hr>
+    <footer>
+    <div style="-moz-transform: scaleX(-1); -o-transform: scaleX(-1); -webkit-transform: scaleX(-1); transform: scaleX(-1); display: inline-block;">
+        &copy;
+    </div>
+    Minos 2013 
+    </footer>
+</div>
+
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/task">Tasks</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/table">Tables</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/regionserver">Regionservers</a>
+        </li>
+    </ul>
+    
+    <h4>SummaryMetric&nbsp;&nbsp;|&nbsp;&nbsp;<a href="/monitor/table/operation/{{ table.id }}">OperationMetric</a></h4>
+
+    <h2>Table: {{ table.name }}</h2>
+    <div class="row">
+        <div class="span3">MemStoreSize(MB): {{ table.memStoreSizeMB }}</div>
+        <div class="span3">StorefileSize(MB): {{ table.storefileSizeMB }}</div>
+        <div class="span3">Read QPS: {{ table.readRequestsCountPerSec }}</div>
+        <div class="span3">Write QPS: {{ table.writeRequestsCountPerSec }}</div>
+    </div>
+    {% if counter %}
+    <div class="row">
+        <div class="span12">
+            <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                    allowtransparency="yes" class="span12" style="margin:0px;"
+                    height="350"
+                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ counter.host }}&item_keys={{ counter.identity }}&big=12&height=300"></iframe>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="span12"><h3>QPS history</h3></div>
+    </div>
+    <div class="row">
+        <div class="span12">
+            <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                    allowtransparency="yes" class="span12" style="margin:0px;"
+                    height="350"
+                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ metrics.endpoint }}&item_keys={{ metrics.keys }}&big=12&height=300&graph_type=k"></iframe>
+        </div>
+    </div>
+    <div class="row">
+        <div class="span12"><h3>QPS distribution on regions</h3></div>
+    </div>
+    <div class="row">
+        <div class="span12"> {{ read_requests_dist_by_rs_chart }} </div>
+    </div>
+    <div class="row">
+        <div class="span12"> {{ write_requests_dist_by_rs_chart }} </div>
+    </div>
+{% endblock %}

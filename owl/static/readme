@@ -1,0 +1,9 @@
+version:
+
+bootstrap: v2.2.1                                                                                                                                            
+           http://twitter.github.com/bootstrap/
+Highcharts: v2.3.3
+            http://www.highcharts.com/
+
+jquery-v1.8.3.js 
+jquery-ui-1.9.2

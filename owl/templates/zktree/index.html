@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="span12">
+        <h2>ZooKeeper ZNode {{znode.path}}</h2>
+    <div class="span12">
+</div>
+
+{% if znode.path != '/' %}
+<div class="row">
+    <div class="span12">
+        <a href="/zktree/{{addrs}}{{parent_path}}"> Parent Path</a>
+    </div>
+</div>
+{% endif %}
+<div class="row">
+    <div class="span12">
+        Path : {{znode.path}}
+    </div>
+</div>
+<div class="row">
+    <div class="span12">
+        Data({{znode.datatype}}) : {{znode.data}}
+    </div>
+</div>
+
+<div class="row">
+    <div class="span4">
+        <h3>Stat Information</h3>
+        <table>
+            <tr><td>czxid</td><td>0x{{znode.stat.czxid|stringformat:"x"}}</td></tr>
+            <tr><td>mzxid</td><td>0x{{znode.stat.mzxid|stringformat:"x"}}</td></tr>
+            <tr><td>ctime</td><td>{{znode.stat.ctime|date}} {{znode.stat.ctime|time}} ({{znode.stat.ctime|timesince}} ago)</td></tr>
+            <tr><td>mtime</td><td>{{znode.stat.mtime|date}} {{znode.stat.mtime|time}} ({{znode.stat.mtime|timesince}} ago)</td></tr>
+            <tr><td>version</td><td>{{znode.stat.version}}</td></tr>
+            <tr><td>cversion</td><td>{{znode.stat.cversion}}</td></tr>
+            <tr><td>aversion</td><td>{{znode.stat.aversion}}</td></tr>
+            {% ifnotequal znode.stat.ephemeralOwner 0 %}
+            <tr><td>ephemeralOwner</td><td>0x{{znode.stat.ephemeralOwner|stringformat:"x"}}</td></tr>
+            {% endifnotequal %}
+            <tr><td>dataLength</td><td>{{znode.stat.dataLength}}</td></tr>
+            <tr><td>pzxid</td><td>0x{{znode.stat.pzxid|stringformat:"x"}}</td></tr>
+        </table>
+        <a href="http://hadoop.apache.org/zookeeper/docs/current/zookeeperProgrammers.html#sc_zkStatStructure" class="doc">Details on Stat fields</a>
+    </div>
+    <div class="span4">
+        <h3>Children ({{znode.stat.numChildren}})</h3>
+        {% if znode.children %}
+        <table>
+            {% for child in znode.children %}
+            <tr><td><a href="{{child|urlencode}}">{{child}}</a></td></tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        No Children exist for this znode
+        {% endif %}
+    </div>
+    <div class="span4">
+        <h3>ACL Information</h3>
+        {% if znode.acls %}
+        ACLs ({{znode.acls|length}})
+        <table>
+            <tr><th>scheme</th><th>id</th><th>perms</th></tr>
+            {% for acl in znode.acls %}
+            <tr><td>{{acl.scheme}}</td><td>{{acl.id}}</td><td>
+                    {% for perm in acl.perm_list %}
+                    {% if not forloop.first %}, {% endif %}
+                    {{perm}}
+                    {% endfor %}
+            </td></tr>
+            {% endfor %}
+        </table>
+        <a href="http://hadoop.apache.org/zookeeper/docs/current/zookeeperProgrammers.html#sc_ZooKeeperAccessControl" class="doc">Details on ACLs</a>
+        {% else %}
+        No ACLs exist for this znode
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

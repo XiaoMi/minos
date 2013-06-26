@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2> All chart config. </h2>
+    <a href="/admin/monitor/chartconfig/add/">Add a chart config</a>
+    <a href="/admin/monitor/chartconfig/">Change chart configs</a>
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th>group name</th>
+            <th>chart name</th>
+            <th>metrics</th>
+            <th>type</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for config in configs %}
+            <tr>
+                <td>{{ config.group_name }}</td>
+                <td>{{ config.chart_name }}</td>
+                <td>{{ config.metrics }}</td>
+                <td>{{ config.type }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

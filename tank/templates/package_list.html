@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+  {% if has_package %}
+    <table border="1">
+      <tr align="left">
+        <th>ID</th>
+        <th>Package Name</th>
+        <th>Revision No.</th>
+        <th>Timestamp</th>
+        <th>Checksum</th>
+        <th>Download Link</th>
+      </tr>
+      {% for package in package_list %}
+        <tr>
+          <td>{{ package.id }}</td>
+          <td>{{ package.name }}</td>
+          <td>{{ package.revision }}</td>
+          <td>{{ package.timestamp }}</td>
+          <td>{{ package.checksum }}</td>
+          <td><a href="{{ package.download_link }}">Download</a></td>
+        </tr>
+      {% endfor%}
+    </table>
+  {% else %}
+    <p>There's no packages availabe!</p>
+  {% endif %}
+</div>
+{% endblock%}

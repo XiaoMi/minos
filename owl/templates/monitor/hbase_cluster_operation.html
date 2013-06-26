@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/task">Tasks</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/table">Tables</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/regionserver">Regionservers</a>
+        </li>
+    </ul>
+
+    
+    <div class="row">
+        <div id="sidebar" class="span1">
+            <ul class="nav nav-list affix">
+                <li><a href="/monitor/cluster/{{cluster.id}}/basic">SummaryMetrics</a></li>
+                <li><a href="/monitor/cluster/operation/tablecomparsion/{{cluster.id}}">Comparsion</a></li>
+                <li><strong>---------------</strong></li>
+                {% for metric in metrics%}
+                <li><a href="#{{metric.0}}">{{metric.0}}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="span11">
+        {% for metric in metrics %}
+        <section id="{{metric.0}}">
+            <div class="row">
+                <div class="span11">
+                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="no"
+                    allowtransparency="yes" class="span11" style="margin:0px;"
+                    height="250"
+                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=1&hosts={{ endpoint }}&item_keys={{ metric.1.keys }}|{{metric.2.keys}}&big=6&height=200"></iframe>
+                </div>
+            </div>
+        </section>
+        {% endfor %}
+        </div>
+    </div>
+{% endblock %}
