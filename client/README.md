@@ -21,19 +21,19 @@ deploy a zookeeper service at first.
 Before starting to deploy the zookeeper and hdfs services, we will define
 some conventions:
 
-* **The cluster type**: we define three type of clusters, tst for testing, prc
+* **The cluster type**: we define three type of clusters, tst for testing, prc  
 for offline processing and srv for online serving
-* **The zookeeper cluster name**: we define the zookeeper cluster name use the
-IDC short name and the cluster type, such as dptst stands for testing cluster
+* **The zookeeper cluster name**: we define the zookeeper cluster name use the  
+IDC short name and the cluster type, such as dptst stands for testing cluster  
 at dp IDC.
-* **Other services cluster name**: we define other services cluster name use
-the corresponding zookeeper cluster name and the name of the business for which
-the service is intended to serve. For example, the dptst-example cluster stands
+* **Other services cluster name**: we define other services cluster name use  
+the corresponding zookeeper cluster name and the name of the business for which  
+the service is intended to serve. For example, the dptst-example cluster stands  
 for a testing cluster used to do example tests.
-* **Config file name**: all the services will have a corresponding config files,
-the name of a specified service config file will be ${service}-${cluster}.cfg,
-for example, the dptst zookeeper service's config file will be named
-zookeeper-dptst.cfg, and the dptst example hdfs service's config file will be
+* **Config file name**: all the services will have a corresponding config files,  
+the name of a specified service config file will be ${service}-${cluster}.cfg,  
+for example, the dptst zookeeper service's config file will be named  
+zookeeper-dptst.cfg, and the dptst example hdfs service's config file will be  
 named hdfs-dptst-example.cfg.
 
 ### Deploy Tank
