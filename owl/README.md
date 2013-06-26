@@ -1,5 +1,8 @@
 # Owl
-Owl is a monitor system for Hadoop cluster. It collects data from servers through JMX interface. And it organizes pages in cluster, job and task corresponding to the definition in cluster config. It also provides some utils like health alerter, HDFS quota updater and quota reportor.
+Owl is a monitor system for Hadoop cluster. It collects data from servers  
+through JMX interface. And it organizes pages in cluster, job and task  
+corresponding to the definition in cluster config. It also provides some utils  
+like health alerter, HDFS quota updater and quota reportor.
 
 # Requirements
 mysql-server
