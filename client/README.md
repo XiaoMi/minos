@@ -7,7 +7,7 @@ this client to support deploying other services.
 ## Prerequisites
 In order to run the deploy client, we need the following prerequisites:
 
-    1. python 2.6 or later from <http://www.python.org>
+    1. python 2.7 or later from <http://www.python.org>
     2. pexpect (latest) from <http://www.noah.org/wiki/pexpect>
     3. JDK 1.6 from <http://www.oracle.com/technetwork/java/javase/downloads/index.html>
 

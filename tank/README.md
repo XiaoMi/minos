@@ -4,7 +4,7 @@ Tank is a simple package management django app server for our deployment tool.
 ## Prerequisites
 Install the prerequisite packages:
 
-    1. python 2.6 or later from <http://www.python.org/getit/>
+    1. python 2.7 or later from <http://www.python.org/getit/>
     2. django 1.4 or later from <https://www.djangoproject.com/download/>
 
 ## Install Tank
