@@ -1,3 +1,5 @@
+# This file was modified by Xiaomi.com on 2013-6-27.
+
 import os
 import re
 import cgi
@@ -26,8 +28,6 @@ from supervisor.xmlrpc import Faults
 from supervisor.xmlrpc import RPCError
 
 from supervisor.rpcinterface import SupervisorNamespaceRPCInterface
-
-# This file was modified by Xiaomi.com on 2013-6-27.
 
 class DeferredWebProducer:
     """ A medusa producer that implements a deferred callback; requires

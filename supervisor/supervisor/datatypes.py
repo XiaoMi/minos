@@ -1,3 +1,5 @@
+# This file was modified by Xiaomi.com on 2013-6-27.
+
 import grp
 import os
 import pwd
@@ -8,8 +10,6 @@ import socket
 import shlex
 import urlparse
 from supervisor.loggers import getLevelNumByDescription
-
-# This file was modified by Xiaomi.com on 2013-6-27.
 
 # I dont know why we bother, this doesn't run on Windows, but just
 # in case it ever does, avoid this bug magnet by leaving it.

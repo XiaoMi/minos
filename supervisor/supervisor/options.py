@@ -1,3 +1,5 @@
+# This file was modified by Xiaomi.com on 2013-6-27.
+
 import ConfigParser
 import socket
 import getopt
@@ -50,8 +52,6 @@ from supervisor.datatypes import set_here
 from supervisor import loggers
 from supervisor import states
 from supervisor import xmlrpc
-
-# This file was modified by Xiaomi.com on 2013-6-27.
 
 mydir = os.path.abspath(os.path.dirname(__file__))
 version_txt = os.path.join(mydir, 'version.txt')
