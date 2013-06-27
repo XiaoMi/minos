@@ -1,2 +1,0 @@
-# [kerberos id] [email addrs(space seperated)]
-h_zhangpeng peng.zhang@xiaomi.com
