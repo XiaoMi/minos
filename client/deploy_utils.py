@@ -392,9 +392,10 @@ class PackageConfig:
 # The deployment config parser
 class DeployConfig:
   def __init__(self, file_name):
+    self.config_file = os.path.abspath(file_name)
     self.config_parser = ConfigParser.SafeConfigParser()
     self.config_parser.optionxform = str
-    self.config_parser.read([file_name])
+    self.config_parser.read([self.config_file])
 
   def get_supervisor_config(self):
     config = {
@@ -447,7 +448,7 @@ class DeployConfig:
     return self.config_parser.get('default', 'admin_list').split(',')
 
   def _get_deploy_root(self):
-    return os.path.abspath('%s/..' % os.path.dirname(__file__))
+    return os.path.dirname(self.config_file)
 
   def _get_real_path(self, path):
     if path.startswith('/'):
@@ -457,7 +458,20 @@ class DeployConfig:
           os.path.basename(path))
 
 def get_deploy_config():
-  return DeployConfig('%s/%s' % (os.path.dirname(__file__), DEPLOY_CONFIG))
+  config_file = os.getenv('MINOS_CONFIG_FILE')
+  if config_file:
+    if not config_file.startswith('/'):
+      config_file = '%s/%s' % (os.path.dirname(__file__), config_file)
+  else:
+    config_file = '%s/%s' % (os.path.dirname(__file__), DEPLOY_CONFIG)
+
+  if os.path.exists(config_file):
+    return DeployConfig(config_file)
+
+  Log.print_critical('Cannot find the config file: deploy.cfg, you should'
+      ' specify it by defining the environment variable MINOS_CONFIG_FILE'
+      ', or just put the file under the directory: %s' % os.path.dirname(
+        os.path.abspath('%s/%s' % (os.path.dirname(__file__), DEPLOY_CONFIG))))
 
 def get_template_dir():
   return '%s/template' % get_deploy_config().get_config_dir()
