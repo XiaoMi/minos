@@ -11,17 +11,10 @@ from utils.quota_util import QuotaUpdater
 logger = logging.getLogger('quota')
 
 class Command(BaseCommand):
-  default_root = path.abspath(
-      path.dirname(path.realpath(__file__)) + "/../../../..")
-
   args = ''
   help = "Run the background updater to collector quota on hdfs clusters."
 
   option_list = BaseCommand.option_list + (
-      make_option(
-        "--root",
-        default=default_root,
-        help="Root path of minos, used to look for deployment package/config."),
       make_option(
         "--period",
         default=3600, # check per hour
@@ -48,7 +41,7 @@ class Command(BaseCommand):
         admin_email = ''
         try:
           admin_email = settings.ADMINS[0][1]
-        except:  
+        except:
           pass
         self.mailer.send_email(subject = 'Quota updater error',
                                content = repr(e),

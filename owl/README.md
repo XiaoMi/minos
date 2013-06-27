@@ -39,7 +39,7 @@ init django
 # Configure
 Collector config
 
-Modify collector/collector.cfg to change config for monitor
+Modify collector.cfg in minos/config/owl to change config for monitor
 
     [collector]
     # service name(space seperated)

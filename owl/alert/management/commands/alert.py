@@ -3,10 +3,13 @@ import argparse
 import datetime
 import json
 import logging
+import os
 import smtplib
 import sys
 import time
 import utils.mail
+
+import deploy_utils
 
 from optparse import make_option
 from os import path
@@ -37,7 +40,6 @@ class CollectorConfig:
       self.clusters = {}
       for cluster_name in config.get(name, "clusters").split():
         args = argparse.Namespace()
-        args.root = options["root"]
         args.service = self.name
         args.cluster = cluster_name
         # Parse cluster config.
@@ -47,7 +49,7 @@ class CollectorConfig:
 
   def __init__(self, args, options):
     # Parse collector config.
-    config_path = options["root"] + "/owl/collector/collector.cfg"
+    config_path = os.path.join(deploy_utils.get_config_dir(), 'owl/collector.cfg')
     self.args = args
     self.options = options
     self.config = self.parse_config_file(config_path)
@@ -276,17 +278,10 @@ class StatusChecker:
     json.dump(self.last_status, open(STATUS_FILE_PATH, 'w'))
 
 class Command(BaseCommand):
-  default_root = path.abspath(
-      path.dirname(path.realpath(__file__)) + "/../../../..")
-
   args = ''
   help = "Run the background collector to fetch metrics from /jmx on each server."
 
   option_list = BaseCommand.option_list + (
-      make_option(
-        "--root",
-        default=default_root,
-        help="Root path of minos, used to look for deployment package/config."),
       make_option(
         "--to_email",
         help="Email address to"),
@@ -303,13 +298,6 @@ class Command(BaseCommand):
 
     self.stdout.write("args: %r\n" % (args, ))
     self.stdout.write("options: %r\n" % options)
-    # Dynamically add deployment root to python path, to import deploy tools.
-    sys.path.append(self.options["root"])
-    global tools
-    tools = __import__("client")
-    global deploy_utils
-    __import__("client.deploy_utils")
-    deploy_utils = tools.deploy_utils
 
     self.collector_config = CollectorConfig(self.args, self.options)
 
@@ -333,7 +321,7 @@ class Command(BaseCommand):
         admin_email = ''
         try:
           admin_email = settings.ADMINS[0][1]
-        except:  
+        except:
           pass
         self.mailer.send_email(subject = 'OWL cluster check error',
                                content = repr(e),

@@ -33,7 +33,7 @@ KERBEROS_IDS_PATH = owl_config.KERBEROS_IDS_PATH
 admin_email = ''
 try:
   admin_email = settings.ADMINS[0][1]
-except:  
+except:
   pass
 
 class QuotaReportor:
@@ -56,7 +56,7 @@ class QuotaReportor:
       logger.info('gather quota info failed: %r', e)
       self.mailer.send_email(subject = 'Make quota report failed',
                              content = repr(e),
-                             to_email = admin_email, 
+                             to_email = admin_email,
                             )
     else:
       self.send_report_mail()
@@ -188,18 +188,8 @@ class QuotaReportor:
       return None
 
 class Command(BaseCommand):
-  default_root = path.abspath(
-      path.dirname(path.realpath(__file__)) + "/../../../..")
-
   args = ''
   help = "Run the background updater to collector quota on hdfs clusters."
-
-  option_list = BaseCommand.option_list + (
-      make_option(
-        "--root",
-        default=default_root,
-        help="Root path of minos, used to look for deployment package/config."),
-  )
 
   def handle(self, *args, **options):
     self.args = args
@@ -217,7 +207,7 @@ class Command(BaseCommand):
       logger.warning('Quota repotor aborted: %r', e)
       self.mailer.send_email(subject = 'Make quota report failed',
                              content = repr(e),
-                             to_email = admin_email, 
+                             to_email = admin_email,
                             )
 
 def format_bigint(value):

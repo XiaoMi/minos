@@ -208,16 +208,3 @@ LOGGING = {
 
 # site config
 LOGIN_REDIRECT_URL = '/monitor/'
-
-CHART_URL_PREFIX = 'charts'
-SUPERVISOR_PORT = '9001'
-
-# cluster to generate quota report   
-QUOTA_REPORT_CLUSTER = ['dptst-example',]
-# user that receive cluster quota report
-QUOTA_REPORT_ADMINS = ''
-# user that receive cluster quota alert
-QUOTA_ALERT_ADMINS = ''
-ALLERT_ADMIN_MAIL_ADDR = ''
-
-KERBEROS_IDS_PATH = 'deployment/client/template/kerberos_ids.txt'
