@@ -16,6 +16,8 @@ if sys.platform[:3] == "win": # pragma: no cover
 else:
     DEFAULT_HOST = ""
 
+DEFAULT_EXPECTED_EXIT_CODE = 999
+
 here = None
 
 def set_here(v):
@@ -64,7 +66,7 @@ def list_of_exitcodes(arg):
     try:
         vals = list_of_ints(arg)
         for val in vals:
-            if (val > 255) or (val < 0):
+            if val != DEFAULT_EXPECTED_EXIT_CODE and ((val > 255) or (val < 0)):
                 raise ValueError('Invalid exit code "%s"' % val)
         return vals
     except:

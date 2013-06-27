@@ -755,7 +755,7 @@ class ServerOptions(Options):
         program_name = section.split(':', 1)[1]
 
         priority = integer(get(section, 'priority', 999))
-        autostart = boolean(get(section, 'autostart', 'true'))
+        autostart = boolean(get(section, 'autostart', 'false'))
         autorestart = auto_restart(get(section, 'autorestart', 'unexpected'))
         startsecs = integer(get(section, 'startsecs', 1))
         startretries = integer(get(section, 'startretries', 3))
@@ -776,6 +776,7 @@ class ServerOptions(Options):
         stderr_events = boolean(get(section, 'stderr_events_enabled','false'))
         directory = get(section, 'directory', None)
         serverurl = get(section, 'serverurl', None)
+        http_url = get(section, 'http_url', None)
         if serverurl and serverurl.strip().upper() == 'AUTO':
             serverurl = None
 
@@ -867,7 +868,8 @@ class ServerOptions(Options):
                 exitcodes=exitcodes,
                 redirect_stderr=redirect_stderr,
                 environment=environment,
-                serverurl=serverurl)
+                serverurl=serverurl,
+                http_url=http_url)
 
             programs.append(pconfig)
 
@@ -1585,7 +1587,7 @@ class ProcessConfig(Config):
         'stderr_events_enabled',
         'stopsignal', 'stopwaitsecs', 'stopasgroup', 'killasgroup',
         'exitcodes', 'redirect_stderr' ]
-    optional_param_names = [ 'environment', 'serverurl' ]
+    optional_param_names = [ 'environment', 'serverurl', 'http_url']
 
     def __init__(self, options, **params):
         self.options = options

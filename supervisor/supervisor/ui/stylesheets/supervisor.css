@@ -78,7 +78,7 @@ html, body {
   min-height: 100%;
   height: auto !important;
   height: 100%;
-  width: 782px;
+  width: 882px;
   margin: 0 auto -31px;
 }
 #footer, 
@@ -160,7 +160,7 @@ th.desc {
   width: 200px;
 }
 th.name {
-  width: 200px;
+  width: 300px;
 }
 th.action {
 }
