@@ -430,6 +430,7 @@ def update_regions_for_master_metrics(regions):
     update_metrics.append(str(region.readRequestsCount))
     update_metrics.append(str(region.writeRequestsCount))
     update_metrics.append(str(region.requestsCount))
+    update_metrics.append(str(region.region_server.id))
     update_metrics.append(str(region.id))
     all_update_metrics.append(update_metrics)
 
@@ -438,7 +439,7 @@ def update_regions_for_master_metrics(regions):
     conn=DBConnectionPool.connection()
     cur=conn.cursor()
 
-    cur.executemany('update monitor_region set readRequestsCountPerSec=%s, writeRequestsCountPerSec=%s, last_attempt_time=%s, memStoreSizeMB=%s, storefileSizeMB=%s, readRequestsCount=%s, writeRequestsCount=%s, requestsCount=%s where id=%s', all_update_metrics)
+    cur.executemany('update monitor_region set readRequestsCountPerSec=%s, writeRequestsCountPerSec=%s, last_attempt_time=%s, memStoreSizeMB=%s, storefileSizeMB=%s, readRequestsCount=%s, writeRequestsCount=%s, requestsCount=%s, region_server_id=%s where id=%s', all_update_metrics)
     conn.commit()
     cur.close()
   except MySQLdb.Error,e:

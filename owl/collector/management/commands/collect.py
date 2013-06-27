@@ -149,7 +149,7 @@ class MetricSource:
       reactor.callFromThread(reactor.callLater, wait_time, self.fetch_metrics)
     else:
       # We are behind the schedule, fetch the metrics right away.
-      self.fetch_metrics()
+      reactor.callFromThread(self.fetch_metrics)
 
   def fetch_metrics(self):
     logger.info("%r fetching %s...", self.task, self.url)
@@ -302,7 +302,8 @@ class MetricSource:
                                                                     name = region_name,
                                                                     encodeName = Region.get_encode_name(region_name),
                                                                     defaults={"region_server":rs_record})
-              logger.info("%r get_or_create region in region_server from mysql, consume=%s", self.task, str((datetime.datetime.now() - begin).total_seconds()))
+              logger.info("%r get_or_create region in region_server from mysql, consume=%s, region_name=%s, buffered_rs=%s, get_rs=%s",
+                self.task, str((datetime.datetime.now() - begin).total_seconds()), region_name, rs_record.name, region_record.region_server.name)
 
 
             region_record.region_server = rs_record
