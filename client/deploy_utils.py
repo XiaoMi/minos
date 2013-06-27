@@ -454,8 +454,8 @@ class DeployConfig:
     if path.startswith('/'):
       return path
     else:
-      return '%s/%s' % (self._get_deploy_root(),
-          os.path.basename(path))
+      return os.path.abspath('%s/%s' % (
+            self._get_deploy_root(), path))
 
 def get_deploy_config():
   config_file = os.getenv('MINOS_CONFIG_FILE')

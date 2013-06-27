@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration debug="false" xmlns:log4j='http://jakarta.apache.org/log4j/'>
+  <root>
+    <level value="debug" />
+    <appender-ref ref="ASYNC_DRFA" />
+  </root>
+
+  <!--Daily rolling file appender-->
+  <appender name="DRFA" class="org.apache.log4j.DailyRollingFileAppender">
+    <param name="File" value="${impala.log.dir}/impala.log" />
+    <param name="DatePattern" value="'.'yyyy-MM-dd" />
+    <param name="Append" value="true" />
+    <layout class="org.apache.log4j.PatternLayout">
+      <param name="ConversionPattern" value="%d{yyyy-MM-dd,HH:mm:ss,SSS} %p %c: %m%n" />
+    </layout>
+  </appender>
+  <appender name="ASYNC_DRFA" class="org.apache.log4j.AsyncAppender">
+    <param name="BufferSize" value="500" />
+    <param name="Blocking" value="false" />
+    <appender-ref ref="DRFA"/>
+  </appender>
+</log4j:configuration>
