@@ -11,6 +11,8 @@
 10. font related properties
 ----------------------------------------------- */
 
+/* This file was modified by Xiaomi.com on 2013-6-27. */
+
 /* =MAIN
 ----------------------------------------------- */
 body, td, input, select, textarea, a {
@@ -78,7 +80,7 @@ html, body {
   min-height: 100%;
   height: auto !important;
   height: 100%;
-  width: 782px;
+  width: 882px;
   margin: 0 auto -31px;
 }
 #footer, 
@@ -160,7 +162,7 @@ th.desc {
   width: 200px;
 }
 th.name {
-  width: 200px;
+  width: 300px;
 }
 th.action {
 }

@@ -9,12 +9,16 @@ import shlex
 import urlparse
 from supervisor.loggers import getLevelNumByDescription
 
+# This file was modified by Xiaomi.com on 2013-6-27.
+
 # I dont know why we bother, this doesn't run on Windows, but just
 # in case it ever does, avoid this bug magnet by leaving it.
 if sys.platform[:3] == "win": # pragma: no cover
     DEFAULT_HOST = "localhost"
 else:
     DEFAULT_HOST = ""
+
+DEFAULT_EXPECTED_EXIT_CODE = 999
 
 here = None
 
@@ -64,7 +68,7 @@ def list_of_exitcodes(arg):
     try:
         vals = list_of_ints(arg)
         for val in vals:
-            if (val > 255) or (val < 0):
+            if val != DEFAULT_EXPECTED_EXIT_CODE and ((val > 255) or (val < 0)):
                 raise ValueError('Invalid exit code "%s"' % val)
         return vals
     except:
