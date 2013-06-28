@@ -1,8 +1,9 @@
 # Xiaomi Minos
-Xiaomi Minos is a distributed deploy and minitor system used in [XIAOMI.COM](http://www.xiaomi.com).
-It's initially used to deploy and manage our hadoop/hbase/zookeeper clusters,
-and it is very convient to extend to support deploying other services.
-Currently, it supports deploying zookeeper/hdfs/yarn/hbase/impala services.
+Xiaomi Minos is a distributed deployment and monitoring system used in
+[XIAOMI.COM](http://www.xiaomi.com).  It's initially used to deploy and
+manage our hadoop/hbase/zookeeper clusters, and it is very convenient to
+extend to support deploying other services.  Currently, it supports
+deploying zookeeper/hdfs/yarn/hbase/impala services.
 
 # Components
 The Minos system contains the following four components:

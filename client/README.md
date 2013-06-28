@@ -1,7 +1,7 @@
 # The Minos Deploy Client
 This is the client for the Minos deploy system, users will use this client
 to perform the deployment works. Currently, this client support deploying
-zookeeper, hdfs, hbase, yarn and impala. And it's very easy to extend
+zookeeper, hdfs, hbase, yarn and impala. And it's very convenient to extend
 this client to support deploying other services.
 
 ## Prerequisites
