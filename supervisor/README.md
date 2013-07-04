@@ -18,7 +18,7 @@ To deploy supervisord, first we should check out the code to our local working d
 
     git clone https://githum.com/xiaomi/minos.git
 
-After checking out the code, we need to update the configuration file to configuration information of the destination machines.  Here is a simple example:
+After checking out the code, we need to update the configuration file to configure information of the destination machines.  Here is a simple example:
 
     [group_1]
     ; The remote user

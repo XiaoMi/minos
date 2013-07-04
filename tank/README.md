@@ -11,7 +11,7 @@ Tank is a simple package management Django app server for our deployment tool.
 
 To install the server, just check out the code on your production machine:
 
-    git clone https://github.com/xiaomi/minos/tank.git
+    git clone https://github.com/xiaomi/minos.git
 
 ## Run Tank
 
