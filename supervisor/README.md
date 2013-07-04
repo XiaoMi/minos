@@ -1,12 +1,8 @@
 # Supervisor - The Process Control System
-[Supervisor](http://supervisord.org/) is an opensource project, it is a
-client/server system that allows its users to monitor and control a number
-of processes on UNIX-like operating systems.
 
-Based on the version of supervisor-3.0b1, we extend supervisor system to
-support our deployment system. We implement a RPC interface under the
-deployment directory, in this way our deploy client can invoke the services
-supplied by supervisord.
+[Supervisor](http://supervisord.org/) is an open source project, a client/server system that allows its users to monitor and control a number of processes on a UNIX-like operating system.
+
+Based on the version of supervisor-3.0b1, we extended Supervisor to support Minos.  We implemented an RPC interface under the `deployment` directory, so that our deploy client can invoke the services supplied by supervisord.
 
 ## Prerequisites
 
@@ -16,14 +12,13 @@ supplied by supervisord.
     4. elementtree (latest) from <http://effbot.org/downloads#elementtree>
     5. pexpect (latest) from <http://www.noah.org/wiki/pexpect>
 
-## Deploy Supervisord
-To deploy the supervisord, first we should check out the code to our local
-working directory:
+## Deploying Supervisord
+
+To deploy supervisord, first we should check out the code to our local working directory:
 
     git clone https://githum.com/xiaomi/minos.git
 
-After checking out the code, we need to update the config file to config
-the destination machines' information, here is a simple example:
+After checking out the code, we need to update the configuration file to configuration information of the destination machines.  Here is a simple example:
 
     [group_1]
     ; The remote user
@@ -61,38 +56,27 @@ the destination machines' information, here is a simple example:
     host.1=192.168.1.15
     host.2=192.168.1.16
 
-Note: In the above config example, we use different groups of machines to
-support heterogeneous hardware. And the above config file is located in
-minos/config directory.
+Note that, in the above config example, we use different groups of machines to support heterogeneous hardware.  The above configuration file is located in `minos/config` directory.
 
-After finishing the config file, we can run the deploy_supervisor.py tool to
-install supervisor to every remote machine:
+After changing the configuration file, we can run the `deploy_supervisor.py` tool to install supervisor onto every remote machine:
 
     cd minos/supervisor
     ./deploy_supervisor.py
     cd -
 
-After finishing the above deploy process, all the supervisords are started
-on the remote machines. Users can access the web interface of each supervisord,
-for example, suppose the default port is 9001, we can access the following url
-to view the processes managed by the supervisord on 192.168.1.11:
+After finishing the above deploy process, supervisord is started on all remote machines.  You can access the web interface of each supervisord.  For example, suppose the default port is 9001, you can access the following URL to view the processes managed by supervisord on 192.168.1.11:
 
     http://192.168.1.11:9001/
 
 ---
+
 # Superlance
-[Superlance](https://pypi.python.org/pypi/superlance) is a package of plugin
-utilities for monitoring and controlling processes that run under supervisor.
 
-We integrate superlance-0.7 to our supervisor system, and use the crashmail
-tool to monitor our processes. When a proccess is exited unexpectedly, the
-crashmail tool will send alert mail to our mail group, this is really very
-handy.
+[Superlance](https://pypi.python.org/pypi/superlance) is a package of plug-in utilities for monitoring and controlling processes that run under supervisor.
 
-We config the crashmail to supervisor as an auto-started process, it will
-start working automatically when the supervisor is started. Following is a
-config example taken from minos/config/supervisord.conf to show how to config
-crashmail alertor:
+We integrate `superlance-0.7` to our supervisor system, and use the crashmail tool to monitor all processes.  When a process exits unexpectedly, crashmail will send an alert email to a mailing list that is configurable.
+
+We configure crashmail as an auto-started process.  It will start working automatically when the supervisor is started.  Following is a config example, taken from `minos/config/supervisord.conf`, that shows how to configure crashmail:
 
     [eventlistener:crashmailbatch-monitor]
     command=python superlance/crashmailbatch.py \

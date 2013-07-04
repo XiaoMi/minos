@@ -15,4 +15,4 @@ Library for zkpython
 7. make
 8. sudo make install
 9. cd zookeeper/src/contrib/zkpython
-10.ant build
+10. ant build

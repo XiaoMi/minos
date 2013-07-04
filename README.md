@@ -1,28 +1,28 @@
-# Xiaomi Minos
-Xiaomi Minos is a distributed deployment and monitoring system used in
-[XIAOMI.COM](http://www.xiaomi.com).  It's initially used to deploy and
-manage our hadoop/hbase/zookeeper clusters, and it is very convenient to
-extend to support deploying other services.  Currently, it supports
-deploying zookeeper/hdfs/yarn/hbase/impala services.
+# What is Minos
+
+Minos is a distributed deployment and monitoring system.  It was initially developed and used at [Xiaomi](http://www.xiaomi.com) to deploy and manage the Hadoop, HBase and ZooKeeper clusters used in the company.  Minos can be easily extended to support other systems, among which HDFS, YARN and Impala have been supported in the current release.
 
 # Components
+
 The Minos system contains the following four components:
 
+1. Client
+2. Owl
+3. Supervisor
+4. Tank
+
 ## Client
-This is the command line client tool for users to deploy and manage processes
-of various services. Users can refer to client/README.md to learn how to use
-it.
+
+This is the command line client tool used to deploy and manage processes of various systems.  You can refer to file `client/README.md` to learn how to use it.
 
 ## Owl
-This is the process status dashboard system, from which users can take a
-overview of the whole clusters managed by Minos. Users can refer to
-owl/README.md to learn how to use it.
+
+This is the dashboard system to display the status of all processes, where users can take a overview of the whole clusters managed by Minos.  You can refer to `owl/README.md` to learn how to use it.
 
 ## Supervisor
-This is the process management and monitor system. Users can refer to
-supervisor/README.md to learn how to use it.
+
+This is the process management and monitoring system.  You can refer to `supervisor/README.md` to learn how to use it.
 
 ## Tank
-This is the package management system. Users can refer to tank/README.md to
-learn how to use it.
 
+This is the package management system.  You can refer to `tank/README.md` to learn how to use it.
