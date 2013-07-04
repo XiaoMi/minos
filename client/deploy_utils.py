@@ -120,14 +120,39 @@ class Log:
     Log.error_exit(False)
 
 def get_config_path(args):
+  '''
+  Get the config file path of a service of specified cluster
+
+  @param  args    the command line arguments object parsed by artparse.py
+  @return string  the config file path
+  '''
   return "%s/conf/%s/%s-%s.cfg" % (
       get_deploy_config().get_config_dir(),
       args.service, args.service, args.cluster)
 
 def get_local_package_path_general(path, artifact, version):
+  '''
+  Get the local tarball path of the package of specified artifact and version
+
+  @param  path      the base path of the tarball
+  @param  artifact  the artifact of the package
+  @param  version   the version of the package
+  @return string    the full path of the tarball
+
+  Note: This method is for internal use, users shouldn't call it directly.
+    Users who want to obtain the local package path should call
+    get_local_package_path().
+  '''
   return ("%s/%s-%s.tar.gz" % (path, artifact, version))
 
 def get_local_package_path(artifact, version):
+  '''
+  Get the local tarball path of the package of specified artifact and version
+
+  @param  artifact  the artifact of the package
+  @param  version   the version of the package
+  @return string    the full path of the tarball
+  '''
   if artifact == "zookeeper":
     package_path = get_local_package_path_general(
         get_deploy_config().get_zookeeper_package_dir(),
@@ -149,6 +174,14 @@ def get_local_package_path(artifact, version):
   return package_path
 
 def generate_package_revision(root):
+  '''
+  Get the revision of the package. Currently, only svn revision is
+  supported. If the package directory is not a svn working directory,
+  a fake revision will be returned.
+
+  @param  root   the local package root directory
+  @return string the revision of the package
+  '''
   if os.path.islink(root):
     real_path = os.readlink(root)
     if not real_path.startswith('/'):
@@ -173,6 +206,12 @@ def generate_package_revision(root):
     return "r%s" % FAKE_SVN_VERSION
 
 def generate_checksum(path):
+  '''
+  Generate the SHA-1 digest of specified file.
+
+  @param  path   the path of the file
+  @return string the SHA-1 digest
+  '''
   fd = open(path, "r")
   sha1 = hashlib.sha1()
   while True:
@@ -183,6 +222,16 @@ def generate_checksum(path):
   return sha1.hexdigest()
 
 def upload_package(args, artifact, version):
+  '''
+  Upload the specified package to the package server(Tank). Note that
+  if the file with the same checksum is already uploaded, this uploading
+  will be skipped.
+
+  @param  args     the command line arguments object parsed by artparse.py
+  @param  artifact the artifact of the package
+  @param  version  the version of the package
+  @return dict     the package information return by the package server
+  '''
   package_path = get_local_package_path(artifact, version)
   Log.print_info("Uploading pacakge: %s" % package_path)
 
@@ -207,6 +256,14 @@ def upload_package(args, artifact, version):
   return None
 
 def generate_site_xml(args, template_path, template_dict):
+  '''
+  Generate the *-site.xml file according to the given properties dict.
+
+  @param  args          the argument object parsed by argparse
+  @param  template_path the *-site.xml template path
+  @param  template_dict the properties dict
+  @return string        the generated file content
+  '''
   template = Template(open(template_path).read())
   config_value = ""
   keys = template_dict.keys()
@@ -221,13 +278,27 @@ def generate_site_xml(args, template_path, template_dict):
   return template.substitute({"config_value": config_value})
 
 def create_run_script(template_path, template_dict):
+  '''
+  Generate the run script of given script template and variables dict.
+
+  @param  template_path  the script template path
+  @param  template_dict  the variables dict
+  @return string         the generated file content
+  '''
   template = Template(open(template_path).read())
   content = template.substitute(template_dict)
   return content
 
 class ServiceConfig:
+  '''
+  The service configuration class which is the in memory representation of
+  the service config file ${service}-${cluster}.cfg.
+  '''
   @staticmethod
   def parse_site_xml_config(config, prefix):
+    '''
+    Parse the ${prefix}.site.xml section of the config file.
+    '''
     section = prefix + ".site.xml"
     if config.has_section(section):
       site_xml = dict(config.items(section))
@@ -237,6 +308,9 @@ class ServiceConfig:
 
   @staticmethod
   def parse_params(namespace, config, section, schema):
+    '''
+    Parse the parameters specified by the schema dict from the config file.
+    '''
     for param_name, param_def in schema.iteritems():
       if config.has_option(section, param_name):
         if param_def[0] is bool:
@@ -257,6 +331,9 @@ class ServiceConfig:
       setattr(namespace, param_name, param_value)
 
   class Cluster:
+    '''
+    The class represents a service cluster.
+    '''
     def __init__(self, config, cluster_name):
       ServiceConfig.parse_params(self, config, "cluster", CLUSTER_SCHEMA)
 
@@ -276,6 +353,9 @@ class ServiceConfig:
       self.site_xml = ServiceConfig.parse_site_xml_config(config, "cluster")
 
   class Jobs:
+    '''
+    The class represents all the jobs of a service.
+    '''
     def __init__(self, config, job_name, schema, check_rule):
       self.name = job_name
 
@@ -318,79 +398,10 @@ class ServiceConfig:
       self.jobs[job_name] = ServiceConfig.Jobs(
           config, job_name, schema, check_rule)
 
-
-class PackageConfig:
-  class Package:
-    def __init__(self, revision, config=None):
-      self.revision = revision
-      if not config is None:
-        self.checksum = config.get(revision, "checksum")
-      else:
-        self.checksum = None
-
-    def write_config(self, config):
-      config.add_section(self.revision)
-      config.set(self.revision, "checksum", self.checksum)
-
-  def __init__(self, content=None):
-    self.current = None
-    self.latest = None
-    self.packages = {}
-    self.checksum_map = {}
-
-    config = ConfigParser.SafeConfigParser()
-    config.optionxform = str
-    if not content is None:
-      Log.print_verbose("Package config content: " + content, 3)
-      config.readfp(cStringIO.StringIO(content))
-      self.parse_config(config)
-      Log.print_success("Successfully parsed package config")
-
-  def parse_config(self, config):
-    self.current = config.get("package", "current")
-    self.latest = config.get("package", "latest")
-    for revision in config.sections():
-      if revision == "package": continue
-      package = PackageConfig.Package(revision, config)
-      self.packages[revision] = package
-      self.checksum_map[package.checksum] = package
-
-  def write_config(self):
-    config = ConfigParser.SafeConfigParser()
-    config.optionxform = str
-    config.add_section("package")
-    config.set("package", "current", self.current)
-    config.set("package", "latest", self.latest)
-    for revision, package in self.packages.iteritems():
-      package.write_config(config)
-    fp = cStringIO.StringIO()
-    config.write(fp)
-    return fp.getvalue()
-
-  def add_package(self, revision, checksum, make_current=True):
-    need_copy = False
-    if revision in self.packages:
-      Log.print_warning("Revision %s has existed, skipped." % revision)
-    elif checksum in self.checksum_map:
-      # Overwrite revision with the remote one.
-      revision = self.checksum_map[checksum].revision
-      Log.print_warning(
-          "Package %s has the same checksum %s, skipped." %
-          (revision, checksum))
-    else:
-      need_copy = True
-      package = PackageConfig.Package(revision)
-      package.checksum = checksum
-      self.packages[revision] = package
-      self.checksum_map[checksum] = package
-      self.latest = revision
-
-    if make_current or self.current is None:
-      self.current = revision
-    return need_copy
-
-# The deployment config parser
 class DeployConfig:
+  '''
+  The deploy config class.
+  '''
   def __init__(self, file_name):
     self.config_file = os.path.abspath(file_name)
     self.config_parser = ConfigParser.SafeConfigParser()
@@ -398,6 +409,9 @@ class DeployConfig:
     self.config_parser.read([self.config_file])
 
   def get_supervisor_config(self):
+    '''
+    Get the supervisor config items from the deploy config file.
+    '''
     config = {
       'server_port': self.config_parser.getint('supervisor', 'server_port'),
       'user': self.config_parser.get('supervisor', 'user'),
@@ -406,6 +420,9 @@ class DeployConfig:
     return config
 
   def get_tank_config(self):
+    '''
+    Get the tank config items from the deploy config file.
+    '''
     config = {
       'server_host': self.config_parser.get('tank', 'server_host'),
       'server_port': self.config_parser.getint('tank', 'server_port'),
@@ -413,38 +430,68 @@ class DeployConfig:
     return config
 
   def get_config_dir(self):
+    '''
+    Get the service config file's root directory.
+    '''
     return self._get_real_path(self.config_parser.get(
           'default', 'config_dir'))
 
   def get_zookeeper_root(self):
+    '''
+    Get the local zookeeper root directory.
+    '''
     return self._get_real_path(self.config_parser.get(
           'default', 'zookeeper_root'))
 
   def get_zookeeper_package_dir(self):
+    '''
+    Get the local zookeeper tarball directory.
+    '''
     return '%s/build' % self.get_zookeeper_root()
 
   def get_hadoop_root(self):
+    '''
+    Get the local hadoop root directory.
+    '''
     return self._get_real_path(self.config_parser.get(
           'default', 'hadoop_root'))
 
   def get_hadoop_package_dir(self):
+    '''
+    Get the local hadoop tarball directory.
+    '''
     return '%s/hadoop-dist/target' % self.get_hadoop_root()
 
   def get_hbase_root(self):
+    '''
+    Get the local hbase root directory.
+    '''
     return self._get_real_path(self.config_parser.get(
           'default', 'hbase_root'))
 
   def get_hbase_package_dir(self):
+    '''
+    Get the local hbase tarball directory.
+    '''
     return '%s/target' % self.get_hbase_root()
 
   def get_impala_root(self):
+    '''
+    Get the local impala root directory
+    '''
     return self._get_real_path(self.config_parser.get(
           'default', 'impala_root'))
 
   def get_imapala_package_dir(self):
+    '''
+    Get the local impala tarball directory
+    '''
     return '%s/release' % self.get_impala_root()
 
   def get_admin_list(self):
+    '''
+    Get the administrators list.
+    '''
     return self.config_parser.get('default', 'admin_list').split(',')
 
   def _get_deploy_root(self):
@@ -458,6 +505,9 @@ class DeployConfig:
             self._get_deploy_root(), path))
 
 def get_deploy_config():
+  '''
+  A factory method to construct the deploy config object.
+  '''
   config_file = os.getenv('MINOS_CONFIG_FILE')
   if config_file:
     if not config_file.startswith('/'):
@@ -474,12 +524,24 @@ def get_deploy_config():
         os.path.abspath('%s/%s' % (os.path.dirname(__file__), DEPLOY_CONFIG))))
 
 def get_template_dir():
+  '''
+  Get the config templates directory.
+  '''
   return '%s/template' % get_deploy_config().get_config_dir()
 
 def get_config_dir():
+  '''
+  Get the service config directory.
+  '''
   return get_deploy_config().get_config_dir()
 
 def get_root_dir(service):
+  '''
+  Get the local root directory of specified service.
+
+  @param  service  the service name
+  @return string   the local root directory of the service
+  '''
   if service == "hdfs" or service == "yarn":
     return get_deploy_config().get_hadoop_root()
   if service == "hbase":
@@ -491,6 +553,15 @@ def get_root_dir(service):
   Log.print_critical("Unknow service: %s" % service)
 
 def get_supervisor_client(host, service, cluster, job):
+  '''
+  A factory method to construct a supervisor client object.
+
+  @param  host    the remote server's host
+  @param  service the service name
+  @param  cluster the cluster name
+  @param  job     the job name
+  @return object  the supervisor client object
+  '''
   deploy_config = get_deploy_config()
   supervisor_config = deploy_config.get_supervisor_config()
 
@@ -499,14 +570,24 @@ def get_supervisor_client(host, service, cluster, job):
       service, cluster, job)
 
 def get_tank_client():
+  '''
+  A factory method to construct a tank(package server) client object.
+  '''
   deploy_config = get_deploy_config()
   tank_config = deploy_config.get_tank_config()
 
   return TankClient(tank_config.get('server_host'),
       tank_config.get('server_port'))
 
-# Get service config, without any dependencies.
 def get_service_config(args, schema_map, check_rule=True):
+  '''
+  Get service config, without any dependencies.
+
+  @param  args       the command line arguments object parsed by argparse
+  @param  schema_map the service's config schema dict
+  @param  check_rule flag of whether check the rules or not
+  @return object     the parsed service config object
+  '''
   config_path = get_config_path(args)
   config_parser = ConfigParser.SafeConfigParser()
   config_parser.optionxform = str
@@ -516,8 +597,14 @@ def get_service_config(args, schema_map, check_rule=True):
       config_parser, args.cluster, schema_map, check_rule)
   return config
 
-# Get service config and configs for all dependencies (only zookeeper now).
 def get_service_config_full(args, schema_map):
+  '''
+  Get service config and configs for all dependencies (only zookeeper now).
+
+  @param  args       the command line arguments object parsed by argparse
+  @param  schema_map the service's config schema dict
+  @return object     the parsed service config object
+  '''
   config = get_service_config(args, schema_map)
 
   zk_args = argparse.Namespace()
@@ -530,13 +617,27 @@ def get_service_config_full(args, schema_map):
   return config
 
 def generate_service_token(service, cluster):
+  '''
+  Generate a token used to bootstrap and cleanup.
+
+  @param  service the service name
+  @param  cluster the cluster name
+  @return string  the generated token
+  '''
   return str(uuid.uuid3(uuid.NAMESPACE_DNS,'%s-%s' % (
           service, cluster)))
 
 def check_input(input, yes='y'):
+  '''
+  Check if the input string is yes or not.
+  '''
   return input.strip().lower() == yes.lower()
 
 def check_admin_priviledge(args):
+  '''
+  Check if the current user is in the administrators list or not. Note that
+  this will be checked only when security is enabled.
+  '''
   if is_security_enabled(args):
     user = get_user_principal_from_ticket_cache()
     admin_list = get_deploy_config().get_admin_list()
@@ -545,9 +646,17 @@ def check_admin_priviledge(args):
           "this operation can't be processed" % user)
 
 def is_security_enabled(args):
+  '''
+  Determine if security is enabled or not.
+  '''
   return get_service_config(args, {}, False).cluster.enable_security
 
 def confirm_bootstrap(service, service_config):
+  '''
+  Let the users confirm bootstrap interactively. Users will be asked to
+  set a password, or a random password will be given. The password is
+  the verification token when users want to do cleanup.
+  '''
   Log.print_warning("You should set a bootstrap password, " \
       "it will be requried when you do cleanup")
   password = str()
@@ -568,6 +677,9 @@ def confirm_bootstrap(service, service_config):
   return password
 
 def confirm_action(args, action):
+  '''
+  Let the users confirm the specify action interactively.
+  '''
   Log.print_warning("You will %s the cluster \033[31;1m%s\033[0;33m, "
       "do you really want to do this?" % (action, args.cluster))
   token = generate_random_confirm_token()
@@ -578,6 +690,10 @@ def confirm_action(args, action):
     Log.print_critical("%s canceled" % action.capitalize())
 
 def confirm_cleanup(args, service, service_config):
+  '''
+  Let the user confirm cleanup interactively. Users will be asked to input
+  the password set when the service is bootstrapped.
+  '''
   confirm_action(args, 'cleanup')
 
   input = getpass.getpass("Please input your installation password: ")
@@ -587,15 +703,33 @@ def confirm_cleanup(args, service, service_config):
     Log.print_critical("The length of the password is at least 6")
 
 def confirm_stop(args):
+  '''
+  Let the user confirm the stop action interactively.
+  '''
   confirm_action(args, 'stop')
 
 def confirm_start(args):
+  '''
+  Let the user confirm the start action interactively.
+  '''
   confirm_action(args, 'start')
 
 def confirm_restart(args):
+  '''
+  Let the user confirm the restart action interactively.
+  '''
   confirm_action(args, 'restart')
 
 def install_service(args, service, service_config, artifact):
+  '''
+  Install the specified service. Here installation means uploading the
+  service package to the package server(Tank).
+
+  @param args           the command line arguments object
+  @param service        the service name
+  @param service_config the service config object
+  @param artifact       the artifact name
+  '''
   Log.print_info("Installing %s to package server" % artifact)
   package_info = upload_package(args, artifact, service_config.cluster.version)
   if package_info:
@@ -606,6 +740,19 @@ def install_service(args, service, service_config, artifact):
 
 def cleanup_job(service, service_config, host, job_name,
     cleanup_token, cleanup_script=""):
+  '''
+  Clean up a task of the specified service and job. Note that cleanup
+  requires that the task must be stopped, so users should stop the task
+  before cleanup.
+
+  @param service         the service name
+  @param service_config  the service config object
+  @param host            the host of the task
+  @param job_name        the job name
+  @param cleanup_token   the token used to verify cleanup
+  @param cleanup_script  the user supplied cleanup script
+  @param artifact        the artifact name
+  '''
   Log.print_info("Cleaning up %s on %s" % (job_name, host))
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name)
@@ -617,7 +764,23 @@ def cleanup_job(service, service_config, host, job_name,
 
 def bootstrap_job(args, artifact, service, service_config, host, job_name,
     cleanup_token, data_dir_indexes='0', bootstrap_script='', **config_files):
-  Log.print_info("Bootstraping %s on %s" % (job_name, host))
+  '''
+  Bootstrap a task of the specified service and job. Note that before
+  bootstrapping users should ensure that the data and log directories at
+  the server side are empty.
+
+  @param args             the command line arguments object
+  @param artifact         the artifact name
+  @param service          the service name
+  @param service_config   the service config object
+  @param host             the host of the task
+  @param job_name         the job name
+  @param cleanup_token    the token used to verify cleanup
+  @param data_dir_indexes the data directory indexes
+  @param bootstrap_script the user supplied bootstrap script
+  @param config_files     the config files dict
+  '''
+  Log.print_info("Bootstrapping %s on %s" % (job_name, host))
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name)
 
@@ -649,6 +812,19 @@ def bootstrap_job(args, artifact, service, service_config, host, job_name,
 
 def start_job(args, artifact, service, service_config, host, job_name,
     start_script, http_url, **config_files):
+  '''
+  Start the task of specified service and job.
+
+  @param args            the command line arguments object
+  @param artifact        the artifact name
+  @param service         the service name
+  @param service_config  the service config object
+  @param host            the host of the task
+  @param job_name        the job name
+  @param start_script    the user supplied start script
+  @param http_url        the task's http entry url
+  @param config_files    the config files dict
+  '''
   Log.print_info("Starting %s on %s" % (job_name, host))
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name)
@@ -677,6 +853,14 @@ def start_job(args, artifact, service, service_config, host, job_name,
     Log.print_error("Start %s on %s fail: %s" % (job_name, host, message))
 
 def stop_job(service, service_config, host, job_name):
+  '''
+  Stop the task of specified service and job.
+
+  @param service         the service name
+  @param service_config  the service config object
+  @param host            the host of the task
+  @param job_name        the job name
+  '''
   Log.print_info("Stopping %s on %s" % (job_name, host))
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name)
@@ -687,6 +871,14 @@ def stop_job(service, service_config, host, job_name):
     Log.print_error("Stop %s on %s fail: %s" % (job_name, host, message))
 
 def show_job(service, service_config, host, job_name):
+  '''
+  Show the state the task of specified service and job.
+
+  @param service         the service name
+  @param service_config  the service config object
+  @param host            the host of the task
+  @param job_name        the job name
+  '''
   Log.print_info("Showing %s on %s" % (job_name, host))
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name)
@@ -697,6 +889,9 @@ def show_job(service, service_config, host, job_name):
     Log.print_error("%s on %s is %s" % (job_name, host, state))
 
 def check_service(host, port):
+  '''
+  Check whether the given host:port is accessable or not.
+  '''
   t = telnetlib.Telnet()
   try:
     t.open(host, port)
@@ -706,28 +901,46 @@ def check_service(host, port):
   return True
 
 def check_job_stopped(service, cluster, job, host):
-    supervisor_client = get_supervisor_client(host,
-        service, cluster, job)
-    status = supervisor_client.show()
-    return status in STOPPED_STATUS
+  '''
+  Check whether a specified task is already stopped or not.
+  '''
+  supervisor_client = get_supervisor_client(host,
+      service, cluster, job)
+  status = supervisor_client.show()
+  return status in STOPPED_STATUS
 
 def wait_for_job_stopping(service, cluster, job, host):
+  '''
+  Wait for a specified job to be stopped.
+  '''
   while not check_job_stopped(service, cluster, job, host):
     Log.print_warning("Wait for %s on %s stopping" % (job, host))
     time.sleep(2)
 
 def get_hadoop_package_root(version):
+  '''
+  Get the hadoop package root directory
+  '''
   return "%s/hadoop-%s" % (get_deploy_config().get_hadoop_package_dir(), version)
 
 def get_hbase_package_root(version):
+  '''
+  Get the hbase package root directory
+  '''
   return "%s/hbase-%s/hbase-%s" % (get_deploy_config().get_hbase_package_dir(),
       version, version)
 
 def get_zookeeper_package_root(version):
+  '''
+  Get the zookeeper package root directory
+  '''
   return "%s/zookeeper-%s" % (
       get_deploy_config().get_zookeeper_package_dir(), version)
 
 def parse_shell_command(args, command_dict):
+  '''
+  Parse the shell command and its options from the command line arguements.
+  '''
   if len(args.command) == 0 or args.command[0] == 'help':
     print_shell_help_info(command_dict)
     return (None, None)
@@ -743,17 +956,26 @@ def parse_shell_command(args, command_dict):
   return (main_class, args.command[1:])
 
 def print_shell_help_info(command_dict):
+  '''
+  Print the help information for the specified shell commands.
+  '''
   help_info="help      \tprint this help information"
   for key, value in command_dict.iteritems():
     help_info += "\n%-10s\t%s" % (key, value[1])
   print help_info
 
 def write_file(file_name, content):
+  '''
+  Write the specified content to the specified file.
+  '''
   file = open(file_name, "wb")
   file.write(content)
   file.close()
 
 def make_package_dir(args, artifact, version):
+  '''
+  Make the local package directories.
+  '''
   cmd = ["mkdir", "-p", "%s/%s/" % (args.package_root, args.cluster)]
   subprocess.check_call(cmd)
 
@@ -763,6 +985,9 @@ def make_package_dir(args, artifact, version):
   subprocess.check_call(cmd)
 
 def pack_package(args, artifact, version):
+  '''
+  Pack the package with generated configuration files into a tarball.
+  '''
   cmd = ["tar", "-C", "%s/%s" % (args.package_root, args.cluster),
     "-zchf", "%s/%s/%s-%s-%d.tar.gz" % (args.package_root,
         args.cluster, artifact, version, time.time()),
@@ -770,11 +995,17 @@ def pack_package(args, artifact, version):
   subprocess.check_call(cmd)
 
 def append_to_file(file, content):
+  '''
+  Append specified content to the specified file.
+  '''
   fp = open(file, "a")
   fp.write(content)
   fp.close()
 
 def confirm_rolling_update(id, wait_time):
+  '''
+  Let the user confirm the rolling update action interactively.
+  '''
   while True:
     if wait_time > 0:
       Log.print_info("Waiting %d seconds before updating next task..."
@@ -787,9 +1018,16 @@ def confirm_rolling_update(id, wait_time):
   return False
 
 def get_zk_address(cluster):
+  '''
+  Get the zookeeper name address according to the cluster name.
+  '''
   return "bj%s-zk-%s.hadoop.srv" % (cluster[0:2], cluster[2:])
 
 def get_user_principal_from_ticket_cache():
+  '''
+  Get the kerberos principal from the current user's ticket cache.
+
+  '''
   try:
     cmd = ['klist']
     output = subprocess.check_output(cmd)
@@ -804,6 +1042,9 @@ def get_user_principal_from_ticket_cache():
     Log.print_critical('You must kinit your kerberos principal first')
 
 def generate_random_confirm_token():
+  '''
+  Generate a random 8 bytes token used to do confirm
+  '''
   return str(uuid.uuid4())[0:8]
 
 if __name__ == '__main__':

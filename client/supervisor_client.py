@@ -2,8 +2,10 @@
 
 import xmlrpclib
 
-# The supervisor client
 class SupervisorClient:
+  '''
+  The supervisor client.
+  '''
   def __init__(self, host, port, user, passwd, service, cluster, job):
     self.proxy = xmlrpclib.ServerProxy('http://%s:%s@%s:%d' % (
       user, passwd, host, port))
@@ -12,26 +14,44 @@ class SupervisorClient:
     self.job = job
 
   def get_available_data_dirs(self):
+    '''
+    Get the available data directories of the remote server.
+    '''
     return self.proxy.deployment.get_available_data_dirs(self.service,
         self.cluster, self.job)
 
   def get_data_dirs(self):
+    '''
+    Get the currently used data directories of this job.
+    '''
     return self.proxy.deployment.get_data_dirs(self.service,
         self.cluster, self.job)
 
   def get_log_dir(self):
+    '''
+    Get the log directory of this job.
+    '''
     return self.proxy.deployment.get_log_dir(self.service,
         self.cluster, self.job)
 
   def get_cleanup_token(self):
+    '''
+    Get the cleanup token of this job.
+    '''
     return self.proxy.deployment.get_cleanup_token(self.service,
         self.cluster, self.job)
 
   def get_run_dir(self):
+    '''
+    Get the running directory of this job.
+    '''
     return self.proxy.deployment.get_run_dir(self.service,
         self.cluster, self.job)
 
   def get_package_dir(self):
+    '''
+    Get the package directory of this job.
+    '''
     return self.proxy.deployment.get_package_dir(self.service,
         self.cluster, self.job)
 
@@ -48,6 +68,9 @@ class SupervisorClient:
   def bootstrap(self, artifact, force_update=False, package_name='',
       revision='', timestamp='', cleanup_token='', bootstrap_script='',
       data_dir_indexes='0', **config_files):
+    '''
+    Bootstrap the job.
+    '''
     try:
       config_dict = {
         'artifact': artifact,
@@ -68,6 +91,9 @@ class SupervisorClient:
 
   def start(self, artifact, force_update=False, package_name='', revision='',
       timestamp='', http_url='', start_script='', **config_files):
+    '''
+    Start the job.
+    '''
     try:
       config_dict = {
         'start.sh': start_script,
@@ -86,6 +112,9 @@ class SupervisorClient:
     return message
 
   def stop(self):
+    '''
+    Stop the job.
+    '''
     try:
       message = self.proxy.deployment.stop(self.service, self.cluster,
           self.job, dict())
@@ -94,6 +123,9 @@ class SupervisorClient:
     return message
 
   def show(self):
+    '''
+    Show the running status the job.
+    '''
     try:
       message = self.proxy.deployment.show(self.service, self.cluster,
           self.job, dict())
@@ -102,12 +134,18 @@ class SupervisorClient:
     return message
 
   def restart(self, start_script, **config_files):
+    '''
+    Restart the job.
+    '''
     if self.stop() == 'OK':
       return self.start(start_script, **config_files)
     else:
       return 'Stop %s-%s-%s failed' % (self.service, self.cluster, self.job)
 
   def cleanup(self, cleanup_token, cleanup_script):
+    '''
+    Cleanup the job's data and log directories.
+    '''
     try:
       config_dict = {
         'cleanup_token': cleanup_token,

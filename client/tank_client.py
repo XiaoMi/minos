@@ -6,8 +6,10 @@ import mimetypes
 import os
 import urllib
 
-# The package_server client
 class TankClient:
+  '''
+  The package server client.
+  '''
   def __init__(self, host, port=80, upload_uri='/upload_package/',
       check_uri='/check_package/'):
     self.conn = httplib.HTTPConnection(host, port)
@@ -15,6 +17,15 @@ class TankClient:
     self.check_uri = check_uri
 
   def check_package(self, artifact, checksum):
+    '''
+    Check whether a package of specified artifact and checksum already
+    existed on the package server.
+
+    @param  artifact the package artifact
+    @param  checksum the package checksum
+    @return string   the package infomation if the package already existed,
+                     otherwise None
+    '''
     data = urllib.urlencode({
         'artifact': artifact,
         'checksum': checksum,
@@ -30,6 +41,14 @@ class TankClient:
     return None
 
   def upload(self, package_path, artifact, revision):
+    '''
+    Upload the specified package to the package server.
+
+    @param  package_path the package path
+    @param  artifact     the package artifact
+    @param  revision     the package revision
+    @return integer      the http status code
+    '''
     param = {
       'artifact': artifact,
       'revision': revision,
