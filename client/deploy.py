@@ -156,9 +156,9 @@ def parse_command_line():
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help="Rolling update the specified job, users must specify "
            "the job through the --job option")
-  sub_parser.add_argument("--skip_confirm", action="store_true", 
-      default=False, help="Whether skip the confirm")
-  sub_parser.add_argument("--vacate_rs", action="store_true", 
+  sub_parser.add_argument("--skip_confirm", action="store_true",
+      default=False, help="Whether skip the confirmation or not")
+  sub_parser.add_argument("--vacate_rs", action="store_true",
       default=False, help="Whether to vacate region server before restart it")
   sub_parser.add_argument("--time_interval", default=120, type=int,
       help="The time interval between rolling update tasks")

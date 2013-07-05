@@ -350,6 +350,9 @@ def rolling_update(args):
   get_zk_service_config(args)
   job_name = "zookeeper"
 
+  if not args.skip_confirm:
+    deploy_utils.confirm_action(args, "rolling_update")
+
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.zk_config.jobs[job_name].hosts
   wait_time = 0
@@ -359,6 +362,8 @@ def rolling_update(args):
     deploy_utils.wait_for_job_stopping("zookeeper",
         args.zk_config.cluster.name, job_name, hosts[id])
     start_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_starting("zookeeper",
+        args.zk_config.cluster.name, job_name, hosts[id])
     wait_time = args.time_interval
   Log.print_success("Rolling updating %s success" % job_name)
 

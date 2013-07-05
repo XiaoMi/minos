@@ -554,6 +554,8 @@ def rolling_update(args):
     deploy_utils.wait_for_job_stopping("hbase",
         args.hbase_config.cluster.name, job_name, hosts[id])
     start_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_starting("hbase",
+        args.hbase_config.cluster.name, job_name, hosts[id])
 
     if args.vacate_rs:
       recover_region_server(args, hosts[id])

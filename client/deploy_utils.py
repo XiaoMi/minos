@@ -917,6 +917,24 @@ def wait_for_job_stopping(service, cluster, job, host):
     Log.print_warning("Wait for %s on %s stopping" % (job, host))
     time.sleep(2)
 
+def check_job_started(service, cluster, job, host):
+  '''
+  Check whether a specified task is already started or not.
+  '''
+  supervisor_client = get_supervisor_client(host,
+      service, cluster, job)
+  status = supervisor_client.show()
+  return status == 'RUNNING'
+
+def wait_for_job_starting(service, cluster, job, host):
+  '''
+  Wait for a specified job to be started.
+  '''
+  # Wait 10 seconds to let supervisord start the task
+  time.sleep(10)
+  if not check_job_started(service, cluster, job, host):
+      Log.print_critical('%s on %s start failed' % (job, host))
+
 def get_hadoop_package_root(version):
   '''
   Get the hadoop package root directory
