@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load extended_filter %}
 
 {% block content %}
   <h2> All clusters for {{ service.name }}. </h2>
@@ -55,11 +56,15 @@
   </table>
   <h3>QPS Comparison</h3>
   <div class="row">
-      <div class="span12">
-          <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
-              allowtransparency="yes" class="span12" style="margin:0px;"
-              height="350"
-              src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ metrics.endpoint|join:'|' }}&tagstrings=&item_keys=Cluster-readRequestsCountPerSec|Cluster-writeRequestsCountPerSec&big=6&height=300"></iframe>
+      <div class = "span6">
+          <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ tsdb_read_query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+              <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ tsdb_read_query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{tsdb_read_query|pic_heigth}}&png" />
+          </a>
+      </div>
+      <div class = "span6">
+          <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ tsdb_write_query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+              <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ tsdb_write_query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{tsdb_write_query|pic_heigth}}&png" />
+          </a>
       </div>
   </div>
 {% endblock %}

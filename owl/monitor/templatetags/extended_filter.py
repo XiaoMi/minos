@@ -27,6 +27,16 @@ def param_height(view_config):
   height_per_row = 295
   return (len(view_config) + (graph_per_row - 1)) / graph_per_row * height_per_row
 
+# generate picture width
+@register.filter(name='pic_width')
+def pic_width(span):
+  return span * 100
+
+# generate picture height
+@register.filter(name='pic_heigth')
+def pic_heigth(metrics):
+  return 350
+
 # format big number
 @register.filter(name='format_bigint')
 def format_bigint(value):

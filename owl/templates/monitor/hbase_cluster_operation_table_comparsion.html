@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load extended_filter %}
 
 {% block content %}
     <ul class="breadcrumb">
@@ -30,26 +31,26 @@
                 <li><a href="/monitor/cluster/{{cluster.id}}/basic">SummaryMetrics</a></li>
                 <li><a href="/monitor/cluster/operation/{{cluster.id}}">Overall</a></li>
                 <li><strong>---------------</strong></li>
-                {% for metric in metrics%}
-                <li><a href="#{{metric.0}}">{{metric.0}}</a></li>
+                {% for operation, metrics in tsdb_metrics.iteritems%}
+                <li><a href="#{{operation}}">{{operation}}</a></li>
                 {% endfor %}
             </ul>
         </div>
         <div class="span11">
-        {% for metric in metrics %}
-        <section id="{{metric.0}}">
+        {% for operation, metrics in tsdb_metrics.iteritems %}
+        <section id="{{operation}}">
         <div class="row">
             <div class="span5">
-                <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="no"
-                    allowtransparency="yes" class="span5" style="margin:0px;"
-                    height="300"
-                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num={{metric.1}}&hosts={{endpoint}}&item_keys={{metric.2}}&big=5&height=250&graph_type=k"></iframe>
+                <center>{{metrics.0.title}}</center>
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.0.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+                    <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ metrics.0.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metrics.0.query|pic_heigth}}&png" />
+                </a>
             </div>
             <div class="span5">
-                <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="no"
-                    allowtransparency="yes" class="span5" style="margin:0px;"
-                    height="300"
-                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num={{metric.1}}&hosts={{endpoint}}&item_keys={{metric.3}}&big=5&height=250&graph_type=k"></iframe>
+                <center>{{metrics.1.title}}</center>
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.1.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+                    <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{metrics.1.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metrics.1.query|pic_heigth}}&png" />
+                </a>
             </div>
         </div>
         </section>

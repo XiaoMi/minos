@@ -84,7 +84,7 @@ def show_business(request, id, access_type, label):
     metric_names = get_counter_name_of_hbase_operation(group, access_type)
   else:
     metric_names = get_counter_name(group, access_type, label)
-  
+
   params = {
     'business_id' : id,
     'endpoint': endpoint,
@@ -114,7 +114,7 @@ def get_online_counters(access_type, label):
 def show_online(request, id, access_type, label):
   business = Business.objects.get(id=id)
   metrics = get_online_counters(access_type, label)
-  
+
   params = {
     'business_id' : id,
     'write_menus' : ONLINE_METRICS_MENU_CONFIG['Online Write'],

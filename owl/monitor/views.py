@@ -42,9 +42,18 @@ def show_service(request, id):
     'clusters': clusters,
   }
   if service.name == 'hbase':
-    metrics = {}
-    metrics['endpoint'] = [dbutil.map_cluster_to_endpoint(cluster.name) for cluster in clusters]
-    params['metrics'] = metrics
+
+    tsdb_read_query = []
+    tsdb_write_query = []
+    for cluster in clusters:
+      tsdb_read_query.append(metric_helper.make_metric_query(cluster.name, 'Cluster', 'readRequestsCountPerSec'))
+      tsdb_write_query.append(metric_helper.make_metric_query(cluster.name, 'Cluster', 'writeRequestsCountPerSec'))
+
+    params.update({
+      'tsdb_read_query': tsdb_read_query,
+      'tsdb_write_query': tsdb_write_query,
+    })
+
     return respond(request, 'monitor/hbase_service.html', params)
   else:
     return respond(request, 'monitor/service.html', params)
@@ -119,6 +128,13 @@ def show_cluster_table_board(request, id):
   user_tables = [table for table in tables if not is_system_table(table)]
   table_read_item_keys = '|'.join(['%s-readRequestsCountPerSec' % (table.name) for table in user_tables])
   table_write_item_keys ='|'.join(['%s-writeRequestsCountPerSec' % (table.name) for table in user_tables])
+
+  tsdb_read_query = []
+  tsdb_write_query = []
+  for table in user_tables:
+    tsdb_read_query.append(metric_helper.make_metric_query(cluster.name, table.name, 'readRequestsCountPerSec'))
+    tsdb_write_query.append(metric_helper.make_metric_query(cluster.name, table.name, 'writeRequestsCountPerSec'))
+
   params = {
     'cluster': cluster,
     'read_requests_dist_by_table_chart': read_requests_dist_by_table_chart,
@@ -127,6 +143,8 @@ def show_cluster_table_board(request, id):
     'user_tables': user_tables,
     'table_read_item_keys': table_read_item_keys,
     'table_write_item_keys': table_write_item_keys,
+    'tsdb_read_query': tsdb_read_query,
+    'tsdb_write_query': tsdb_write_query,
   }
   return respond(request, 'monitor/hbase_table_board.html', params)
 
@@ -143,15 +161,15 @@ def show_cluster_basic_board(request, id):
 
   basic_info = dbutil.get_hbase_basic_info(cluster)
 
-  metrics = {}
-  metrics['endpoint'] = dbutil.map_cluster_to_endpoint(cluster.name)
   group = 'Cluster'
-  metrics['keys'] = '%s-readRequestsCountPerSec|%s-writeRequestsCountPerSec' % (group, group)
+  tsdb_read_query = [metric_helper.make_metric_query(cluster.name, group, 'readRequestsCountPerSec')]
+  tsdb_write_query = [metric_helper.make_metric_query(cluster.name, group, 'writeRequestsCountPerSec')]
 
   params = {
     'cluster': cluster,
     'basic_info': basic_info,
-    'metrics': metrics,
+    'tsdb_read_query': tsdb_read_query,
+    'tsdb_write_query': tsdb_write_query,
   }
   return respond(request, 'monitor/hbase_basic_board.html', params)
 
@@ -211,81 +229,20 @@ def show_table(request, id):
   write_requests_dist_by_rs_chart = loader.get_template('monitor/requests_dist_column_chart.tpl').render(
     Context(params))
 
-  counter = dbutil.get_counter('infra-hbase-' + cluster.name, table.name + '-Availability')
-
-  metrics = {}
-  metrics['endpoint'] = dbutil.map_cluster_to_endpoint(cluster.name)
   group = str(table)
-  metrics['keys'] = '%s-readRequestsCountPerSec|%s-writeRequestsCountPerSec' % (group, group)
+  tsdb_read_query = [metric_helper.make_metric_query(cluster.name, group, 'readRequestsCountPerSec')]
+  tsdb_write_query = [metric_helper.make_metric_query(cluster.name, group, 'writeRequestsCountPerSec')]
+
   params = {
     'cluster': cluster,
     'table': table,
-    'counter': counter,
     'read_requests_dist_by_rs_chart': read_requests_dist_by_rs_chart,
     'write_requests_dist_by_rs_chart': write_requests_dist_by_rs_chart,
-    'metrics': metrics,
+    'tsdb_read_query': tsdb_read_query,
+    'tsdb_write_query': tsdb_write_query,
   }
 
   return respond(request, 'monitor/hbase_table.html', params)
-
-# metrics is an array of counters, where the counter is formatted as :
-# [operationName, CounterOfNumOps, CounterOfAvgTime]
-def generate_operation_metric_param(record, group):
-  metrics = []
-  if record.operationMetrics is not None and record.operationMetrics != '':
-    operationMetrics = json.loads(record.operationMetrics)
-    for operationName in operationMetrics.keys():
-      # remove common prefix for 'coprocessor-operation'
-      tokens = operationName.split('-')
-      operationShowName = tokens[len(tokens) - 1]
-      operationCounter = []
-      operationCounter.append(operationShowName)
-      operationNumOpsName = operationName + '_NumOps'
-      numOpsCounter = {}
-      numOpsCounter['name'] = operationNumOpsName
-      numOpsCounter['keys'] = '%s-%s' % (group, operationNumOpsName)
-      operationCounter.append(numOpsCounter)
-      operationAvgTimeName = operationName + '_AvgTime'
-      avgTimeCounter = {}
-      avgTimeCounter['name'] = operationAvgTimeName
-      avgTimeCounter['keys'] = '%s-%s' % (group, operationAvgTimeName)
-      operationCounter.append(avgTimeCounter)
-      metrics.append(operationCounter)
-  return metrics
-
-def generate_operation_metrics_param_for_cluster(cluster):
-  # we first read operation metrics for tables of the cluster
-  tables = dbutil.get_table_by_cluster(cluster)
-  operationCounterNameOfTables = {}
-  for table in tables:
-    if table.operationMetrics is not None and table.operationMetrics != '':
-      tableOperationMetrics = json.loads(table.operationMetrics)
-      for operationName in tableOperationMetrics:
-        numOpsCounterName = '%s-%s_NumOps' % (table.name, operationName)
-        avgTimeCounterName = '%s-%s_AvgTime' % (table.name, operationName)
-        if operationName not in operationCounterNameOfTables:
-          operationCounterNameOfTables[operationName] = []
-          operationCounterNameOfTables[operationName].append(1)
-          operationCounterNameOfTables[operationName].append(numOpsCounterName)
-          operationCounterNameOfTables[operationName].append(avgTimeCounterName)
-        else:
-          operationCounterNameOfTables[operationName][0] = operationCounterNameOfTables[operationName][0] + 1
-          operationCounterNameOfTables[operationName][1] = '%s|%s' % (operationCounterNameOfTables[operationName][1], numOpsCounterName)
-          operationCounterNameOfTables[operationName][2] = '%s|%s' % (operationCounterNameOfTables[operationName][2], avgTimeCounterName)
-
-  metrics = []
-  if cluster.hbasecluster.operationMetrics is not None and cluster.hbasecluster.operationMetrics != '':
-    clusterOperationMetrics = json.loads(cluster.hbasecluster.operationMetrics)
-    for operationName in clusterOperationMetrics.keys():
-      tokens = operationName.split('-')
-      operationShowName = tokens[len(tokens) - 1]
-      operationCounter = []
-      operationCounter.append(operationShowName)
-      operationCounter.append(operationCounterNameOfTables[operationName][0])
-      operationCounter.append(operationCounterNameOfTables[operationName][1])
-      operationCounter.append(operationCounterNameOfTables[operationName][2])
-      metrics.append(operationCounter)
-  return metrics
 
 #url: /table/operation/$table_id
 def show_table_operation(request, id):
@@ -296,7 +253,7 @@ def show_table_operation(request, id):
   params = {
     'cluster' : cluster,
     'table' : table,
-    'metrics' : generate_operation_metric_param(table, group),
+    'tsdb_metrics' : metric_helper.make_operation_metrics(endpoint, table, group),
     'endpoint' : endpoint
   }
   return respond(request, 'monitor/hbase_table_operation.html', params)
@@ -308,21 +265,22 @@ def show_cluster_operation(request, id):
   group = 'Cluster'
   params = {
     'cluster' : cluster,
-    'metrics' : generate_operation_metric_param(cluster.hbasecluster, group),
+    'tsdb_metrics' : metric_helper.make_operation_metrics(endpoint, cluster.hbasecluster, group),
     'endpoint' : endpoint
   }
+
   return respond(request, 'monitor/hbase_cluster_operation.html', params)
 
 #url: /cluster/operation/tablecomparsion
 def show_cluster_operation_table_comparison(request, id):
   cluster = dbutil.get_cluster(id)
   endpoint = dbutil.map_cluster_to_endpoint(cluster.name)
-  group = 'Cluster'
   params = {
     'cluster' : cluster,
-    'metrics' : generate_operation_metrics_param_for_cluster(cluster),
+    'tsdb_metrics' : metric_helper.make_operation_metrics_for_tables_in_cluster(cluster),
     'endpoint' : endpoint
   }
+  print params['tsdb_metrics']
   return respond(request, 'monitor/hbase_cluster_operation_table_comparsion.html', params)
 
 #url: /regionserver/$rs_id/
@@ -347,16 +305,17 @@ def show_regionserver(request, id):
   write_requests_dist_by_rs_chart = loader.get_template('monitor/requests_dist_column_chart.tpl').render(
     Context(params))
 
-  metrics = {}
-  metrics['endpoint'] = dbutil.map_cluster_to_endpoint(cluster.name)
   group = str(rs)
-  metrics['keys'] = '%s-readRequestsCountPerSec|%s-writeRequestsCountPerSec' % (group, group)
+  tsdb_read_query = [metric_helper.make_metric_query(cluster.name, group, 'readRequestsCountPerSec')]
+  tsdb_write_query = [metric_helper.make_metric_query(cluster.name, group, 'writeRequestsCountPerSec')]
+
   params = {
     'cluster': cluster,
     'regionserver': rs,
     'read_requests_dist_by_rs_chart': read_requests_dist_by_rs_chart,
     'write_requests_dist_by_rs_chart': write_requests_dist_by_rs_chart,
-    'metrics': metrics,
+    'tsdb_read_query': tsdb_read_query,
+    'tsdb_write_query': tsdb_write_query,
   }
   return respond(request, 'monitor/hbase_regionserver.html', params)
 
@@ -365,13 +324,13 @@ def show_job(request, id):
   tasks = dbutil.get_tasks_by_job(id)
   job = dbutil.get_job(id)
 
-  metrics = {}
-  metrics['endpoint'] = [metric_helper.form_perf_counter_endpoint_name(task) for task in tasks]
-  metrics['metrics_view_config'] = metric_helper.job_metrics_view_config(job)
+  endpoints = [metric_helper.form_perf_counter_endpoint_name(task) for task in tasks]
+  tsdb_metrics = metric_helper.make_metrics_query_for_job(endpoints, job, tasks)
+  print tsdb_metrics
   params = {
     'job': job,
     'tasks': tasks,
-    'metrics': metrics,
+    'tsdb_metrics': tsdb_metrics,
   }
 
   return respond(request, 'monitor/job.html', params)
@@ -382,14 +341,15 @@ def show_task(request, id):
   job = task.job
   tasks = dbutil.get_tasks_by_job(job)
 
-  metrics = {}
-  metrics['endpoint'] = metric_helper.form_perf_counter_endpoint_name(task)
-  metrics['metrics_view_config'] = metric_helper.task_metrics_view_config(str(task))
+  tsdb_metrics = metric_helper.make_metrics_query_for_task(
+    metric_helper.form_perf_counter_endpoint_name(task),
+    task)
+
   params = {
     'job': job,
     'task': task,
     'tasks': tasks,
-    'metrics': metrics,
+    'tsdb_metrics': tsdb_metrics,
   }
   return respond(request, 'monitor/task.html', params)
 
@@ -400,7 +360,7 @@ def show_all_metrics(request):
   if not metrics:
     return HttpResponse('', content_type='application/json; charset=utf8')
 
-  result['timestamp'] = time.time()
+  result['timestamp'] = int(time.time())
   result['data'] = metrics
   # defaultly not format output
   indent = None
@@ -496,7 +456,9 @@ def respond(request, template, params=None):
   params['request'] = request
   params['user'] = request.user
   params['chart_url_prefix'] = owl_config.CHART_URL_PREFIX
+  params['tsdb_url_prefix'] = owl_config.TSDB_ADDR
   params['supervisor_port'] = owl_config.SUPERVISOR_PORT
+  params['start_date'] = (datetime.datetime.now() - datetime.timedelta(minutes=15)).strftime('%Y/%m/%d-%H:%M:%S')
   params.update(request.GET)
   response = render_to_response(template, params,
                                 context_instance=RequestContext(request))

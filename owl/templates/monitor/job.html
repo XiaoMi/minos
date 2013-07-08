@@ -35,20 +35,28 @@
     <div class="row">
         <div id="sidebar" class="span1">
             <ul class="nav nav-list affix">
-                {% for view_tag, view_cfg in metrics.metrics_view_config%}
+                {% for view_tag, graph in tsdb_metrics.iteritems%}
                 <li><a href="#{{view_tag}}">{{view_tag}}</a></li>
                 {% endfor %}
             </ul>
         </div>
 
         <div class="span11">
-            {% for view_tag, view_cfg in metrics.metrics_view_config%}
+            {% for view_tag, graphs in tsdb_metrics.iteritems%}
             <section id="{{view_tag}}">
             <div class="row">
-                <div class="span11">
-                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto" allowtransparency="yes" class="span11" style="margin:0px;" height="{{ view_cfg|param_height}}" src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=bottom&legend_num=4&hosts={{ metrics.endpoint|join:'|' }}&tagstrings=&item_keys={{ view_cfg|param_multikey_for_view }}&big=4&height=200"></iframe>
+            {% for graph in graphs %}
+                <div class="span5">
+                    <center>{{graph.title}}</center>
+                    <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+                        <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{tsdb_read_query|pic_heigth}}&png" />
+                    </a>
                 </div>
+                {% if forloop.counter|divisibleby:2 %}
             </div>
+            <div class="row">
+                {% endif %}
+            {% endfor %}
             </section>
             {% endfor %}
         </div>

@@ -447,3 +447,5 @@ def update_regions_for_master_metrics(regions):
   finally:
     if conn is not None:
       conn.close()
+
+

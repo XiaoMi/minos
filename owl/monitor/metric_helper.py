@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import dbutil
+import json
 import metric_view_config
 
 def form_perf_counter_endpoint_name(task):
@@ -74,3 +76,109 @@ def get_all_metrics_config():
               metric_set.add(metric)
 
   return list(metric_set)
+
+def tsdb_task_metrics_view_config(task):
+  result = {}
+  service, cluster, job, task = str(task).split('/')
+  return metric_view_config.TASK_METRICS_VIEW_CONFIG[service][job]
+
+def tsdb_job_metrics_view_config(job):
+  result = {}
+  service, cluster, job = str(job).split('/')
+  return metric_view_config.JOB_METRICS_VIEW_CONFIG[service][job]
+
+def make_metric_query(endpoint, group, key):
+  return "&m=sum:%s{host=%s,group=%s}&o=" % (key, endpoint, group)
+
+def make_metrics_query_for_task(endpoint, task):
+  metrics = {}
+  task_view_config = task_metrics_view_config(task)
+  for view_tag, view_config in task_view_config:
+    metrics[view_tag] = []
+    for graph_config in view_config:
+      group, key, unit = graph_config[0]
+      graph = {
+        'title' : '%s:%s' % (group, key),
+        'query' : make_metric_query(endpoint, group, key),
+      }
+      metrics[view_tag].append(graph)
+  return metrics
+
+def make_metrics_query_for_job(endpoints, job, tasks):
+  metrics = {}
+  task_view_config = job_metrics_view_config(job)
+  for view_tag, view_config in task_view_config:
+    metrics[view_tag] = []
+    for graph_config in view_config:
+      group, key, unit = graph_config[0]
+      graph = {
+        'title' : '%s:%s' % (group, key),
+        'query' : [],
+      }
+      for endpoint in endpoints:
+        graph['query'].append(make_metric_query(endpoint, group, key))
+      metrics[view_tag].append(graph)
+  return metrics
+
+# metrics is an array of counters, where the counter is formatted as :
+# [operationName, CounterOfNumOps, CounterOfAvgTime]
+def make_operation_metrics(endpoint, record, group):
+  metrics = []
+  if record.operationMetrics is not None and record.operationMetrics != '':
+    operationMetrics = json.loads(record.operationMetrics)
+    for operationName in operationMetrics.keys():
+      # remove common prefix for 'coprocessor-operation'
+      tokens = operationName.split('-')
+      operationShowName = tokens[len(tokens) - 1]
+      operationCounter = []
+      operationCounter.append(operationShowName)
+
+      operationNumOpsName = operationName + '_NumOps'
+      numOpsCounter = {}
+      numOpsCounter['title'] = operationNumOpsName
+      numOpsCounter['query'] = make_metric_query(endpoint, group, operationNumOpsName)
+      operationCounter.append(numOpsCounter)
+
+      operationAvgTimeName = operationName + '_AvgTime'
+      avgTimeCounter = {}
+      avgTimeCounter['title'] = operationAvgTimeName
+      avgTimeCounter['query'] = make_metric_query(endpoint, group, operationAvgTimeName)
+      operationCounter.append(avgTimeCounter)
+
+      metrics.append(operationCounter)
+  return metrics
+
+# [op_name: [{op_num: [table1_op1_avg_query, table2_op1_avg_query]},
+#            {op_avg: [table2 op1_ops, table2 op1_num]}],
+# ]
+def make_operation_metrics_for_tables_in_cluster(cluster):
+  # we first read operation metrics for tables of the cluster
+  tables = dbutil.get_table_by_cluster(cluster)
+  clusterOperationMetrics = json.loads(cluster.hbasecluster.operationMetrics)
+  operationCounterNameOfTables = {}
+  metrics = {}
+  for operationName in clusterOperationMetrics.keys():
+    tokens = operationName.split('-')
+    operationShowName = tokens[-1]
+    numOpsCounterName = '%s_NumOps' % (operationShowName)
+    avgTimeCounterName = '%s_AvgTime' % (operationShowName)
+    metrics[operationShowName] = [{'title': numOpsCounterName, 'query': []},
+                                  {'title': avgTimeCounterName, 'query': []}]  # reserved for num and avg graph
+
+  for table in tables:
+    if table.operationMetrics is not None and table.operationMetrics != '':
+      tableOperationMetrics = json.loads(table.operationMetrics)
+      endpoint = cluster.name
+      group = table.name
+      for operationName in tableOperationMetrics:
+        if operationName not in metrics.keys():
+          continue
+        numOpsCounterName = '%s_NumOps' % (operationName)
+        avgTimeCounterName = '%s_AvgTime' % (operationName)
+        print type(endpoint)
+        print type(group)
+        print type(numOpsCounterName)
+        metrics[operationName][0]['query'].append(make_metric_query(endpoint, group, numOpsCounterName))
+        metrics[operationName][1]['query'].append(make_metric_query(endpoint, group, avgTimeCounterName))
+
+  return metrics
