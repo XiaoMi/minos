@@ -1,4 +1,5 @@
 CHART_URL_PREFIX = 'charts'
+TSDB_ADDR = 'tsdb_addr'
 SUPERVISOR_PORT = '9001'
 
 # cluster to generate quota report
