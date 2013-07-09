@@ -214,8 +214,17 @@ def generate_hdfs_site_dict(args, job_host, job_name):
         "fs.permissions.umask-mode": "022",
         "dfs.cluster.administrators": "hdfs_admin",
         "hadoop.security.group.mapping":
-          "org.apache.hadoop.security.SimpleGroupsMapping",
+          "org.apache.hadoop.security.ConfigurationBasedGroupsMapping",
     })
+
+    if job_host:
+      supervisor_client = deploy_utils.get_supervisor_client(job_host,
+          "hdfs", cluster_name, job_name)
+      run_dir = supervisor_client.get_run_dir()
+      config_dict.update({
+          "hadoop.security.group.mapping.file.name":
+            "%s/hadoop-groups.conf" % run_dir,
+      })
 
   # config security
   username = args.hdfs_config.cluster.kerberos_username
@@ -314,6 +323,7 @@ def generate_configs(args, host, job_name):
   log4j_xml = open("%s/hdfs/log4j.xml" % deploy_utils.get_template_dir()).read()
   rackinfo_txt = open("%s/rackinfo.txt" % deploy_utils.get_config_dir()).read()
   krb5_conf = open("%s/krb5-hadoop.conf" % deploy_utils.get_config_dir()).read()
+  hadoop_groups_conf = open("%s/hadoop-groups.conf" % deploy_utils.get_config_dir()).read()
   slaves = "\n".join(args.hdfs_config.jobs["datanode"].hosts.values())
   excludes = str()
 
@@ -327,6 +337,7 @@ def generate_configs(args, host, job_name):
     "rackinfo.txt": rackinfo_txt,
     "slaves": slaves,
     "excludes": excludes,
+    "hadoop-groups.conf": hadoop_groups_conf,
   }
   return config_files
 
