@@ -51,7 +51,7 @@ def generate_zookeeper_config(args):
       "init_limit": job.init_limit,
       "sync_limit": job.sync_limit,
       "data_dir": supervisor_client.get_available_data_dirs()[0],
-      "data_log_dir": supervisor_client.get_log_dir(),
+      "data_log_dir": supervisor_client.get_available_data_dirs()[0],
       "client_port": job.base_port + 0,
       "server_list": server_list,
       "autopurge_snap_retain_count": job.autopurge_snap_retain_count,
