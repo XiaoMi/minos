@@ -135,12 +135,6 @@ def generate_yarn_site_dict(args, host, job_name):
   cluster_name = args.yarn_config.cluster.name
   package_path = supervisor_client.get_current_package_dir()
   class_path_root = "%s/share/hadoop" % package_path
-  jar_dirs = ""
-  for component in ["common", "mapreduce", "yarn", "hdfs"]:
-    if jar_dirs: jar_dirs += ":"
-    component_dir = ("%s/%s" % (class_path_root, component))
-    jar_dirs += "%s/:%s/lib/*:%s/*" % (
-        component_dir, component_dir, component_dir)
 
   config_dict = {}
   config_dict.update(args.yarn_config.cluster.site_xml)
@@ -173,9 +167,6 @@ def generate_yarn_site_dict(args, host, job_name):
         nodemanager_job.base_port + 2),
     "yarn.nodemanager.vmem-pmem-ratio": 10,
     "yarn.nodemanager.log.retain-seconds": 86400,
-
-    # config class_path
-    "yarn.application.classpath": jar_dirs,
 
     # config proxy server
     "yarn.web-proxy.address": "%s:%d" % (proxyserver_job.hosts[0],
@@ -281,11 +272,16 @@ def generate_run_scripts_params(args, host, job_name):
     jar_dirs += "%s/:%s/lib/*:%s/*" % (
         component_dir, component_dir, component_dir)
 
+  service_env = ""
+  for component_path in ["HADOOP_COMMON_HOME", "HADOOP_HDFS_HOME", "YARN_HOME"]:
+    service_env += "export %s=$package_dir\n" % (component_path)
+
   script_dict = {
       "artifact": artifact_and_version,
       "job_name": job_name,
       "jar_dirs": jar_dirs,
       "run_dir": supervisor_client.get_run_dir(),
+      "service_env": service_env,
       "params":
           '-Xmx%dm ' % job.xmx +
           '-Xms%dm ' % job.xms +

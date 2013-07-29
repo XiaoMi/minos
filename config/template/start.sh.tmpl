@@ -47,4 +47,5 @@ if [ -d "$package_dir/lib/native" ]; then
   options="$OPTS -Djava.library.path=$JAVA_LIBRARY_PATH"
 fi
 
+%service_env
 exec ${java} -cp $class_path $options $params $@ 1>$output_file 2>&1
