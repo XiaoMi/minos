@@ -286,7 +286,7 @@ def create_run_script(template_path, template_dict):
   @return string         the generated file content
   '''
   template = Template(open(template_path).read())
-  content = template.substitute(template_dict)
+  content = template.safe_substitute(template_dict)
   return content
 
 class ServiceConfig:
