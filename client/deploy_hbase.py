@@ -247,8 +247,6 @@ def generate_run_scripts_params(args, host, job_name):
           '-XX:GCLogFileSize=128m ' +
           '-XX:CMSWaitDuration=2000 ' +
           '-XX:+CMSScavengeBeforeRemark ' +
-          '-XX:+PrintClassHistogramAfterFullGC ' +
-          '-XX:+PrintClassHistogramBeforeFullGC ' +
           '-XX:+PrintPromotionFailure ' +
           '-XX:ConcGCThreads=8 ' +
           '-XX:ParallelGCThreads=8 ' +
