@@ -101,6 +101,8 @@ def parse_command_line():
            "control scripts (start/stop/restart, etc) would be generated at "
            "this phase and copied to destination hosts.")
   add_specify_version_options(sub_parser)
+  sub_parser.add_argument("--skip_confirm", action="store_true",
+      default=False, help="Whether skip the confirmation or not")
   sub_parser.add_argument("--update_config", action="store_true",
       default=False, help="Update the config files")
   add_service_arguments(sub_parser)
@@ -111,6 +113,8 @@ def parse_command_line():
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help="Stop whole service on the specified cluster.")
   add_service_arguments(sub_parser)
+  sub_parser.add_argument("--skip_confirm", action="store_true",
+      default=False, help="Whether skip the confirmation or not")
   sub_parser.set_defaults(handler=process_command_stop)
 
   sub_parser = subparsers.add_parser(
@@ -118,6 +122,8 @@ def parse_command_line():
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help="Restart whole service on the specified cluster.")
   add_specify_version_options(sub_parser)
+  sub_parser.add_argument("--skip_confirm", action="store_true",
+      default=False, help="Whether skip the confirmation or not")
   sub_parser.add_argument("--update_config", action="store_true",
       default=False, help="Update the config files")
   add_service_arguments(sub_parser)

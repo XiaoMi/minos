@@ -165,7 +165,8 @@ def start_job(args, host, job_name):
       host, job_name, start_script, http_url, **config_files)
 
 def start(args):
-  deploy_utils.confirm_start(args)
+  if not args.skip_confirm:
+    deploy_utils.confirm_start(args)
   get_impala_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
@@ -177,7 +178,8 @@ def stop_job(args, host, job_name):
   deploy_utils.stop_job("impala", args.impala_config, host, job_name)
 
 def stop(args):
-  deploy_utils.confirm_stop(args)
+  if not args.skip_confirm:
+    deploy_utils.confirm_stop(args)
   get_impala_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
@@ -186,7 +188,8 @@ def stop(args):
       stop_job(args, hosts[id], job_name)
 
 def restart(args):
-  deploy_utils.confirm_restart(args)
+  if not args.skip_confirm:
+    deploy_utils.confirm_restart(args)
   get_impala_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
