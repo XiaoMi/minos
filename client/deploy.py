@@ -47,7 +47,7 @@ def add_service_arguments(parser):
 def parse_command_line():
   parser = argparse.ArgumentParser(
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-      description="Manage the svn client view.")
+      description="Manage the hadoop cluster.")
 
   parser.add_argument("--version", action="version",
       version="%(prog)s 1.0.0-beta")
