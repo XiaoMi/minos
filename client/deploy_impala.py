@@ -94,7 +94,7 @@ def generate_run_scripts_params(args, host, job_name):
       "-planservice_port=%d " % (impalad.base_port + 3) +
       "-state_store_port=%d " % statestored.base_port +
       "-state_store_subscriber_port=%d " % (statestored.base_port + 1) +
-      "-mem_limit=10% " + # TODO make this configurable
+      "-mem_limit=20% " + # TODO make this configurable
       "-state_store_host=%s " % statestored.hosts[0] +
       "-kerberos_reinit_interval=1200 " + # 20hours
       "-webserver_doc_root=$run_dir/package " +
