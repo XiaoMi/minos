@@ -399,7 +399,7 @@ def update_regions_for_region_server_metrics(regions):
   all_update_metrics = []
   for region in regions:
     update_metrics = []
-    update_metrics.append(str(region.last_operation_attempt_time))
+    update_metrics.append(str(region.last_operation_attempt_time).split('.')[0])
     update_metrics.append(str(region.operationMetrics))
     update_metrics.append(str(region.id))
     all_update_metrics.append(update_metrics)
@@ -424,7 +424,7 @@ def update_regions_for_master_metrics(regions):
     update_metrics = []
     update_metrics.append(str(region.readRequestsCountPerSec))
     update_metrics.append(str(region.writeRequestsCountPerSec))
-    update_metrics.append(str(region.last_attempt_time))
+    update_metrics.append(str(region.last_attempt_time).split('.')[0])
     update_metrics.append(str(region.memStoreSizeMB))
     update_metrics.append(str(region.storefileSizeMB))
     update_metrics.append(str(region.readRequestsCount))
