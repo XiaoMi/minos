@@ -245,6 +245,8 @@ def start(args):
   get_zk_service_config(args)
 
   hosts = args.zk_config.jobs["zookeeper"].hosts
+  if args.host is not None:
+    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
     start_job(args, hosts[id], "zookeeper")
 
@@ -258,6 +260,8 @@ def stop(args):
   get_zk_service_config(args)
 
   hosts = args.zk_config.jobs["zookeeper"].hosts
+  if args.host is not None:
+    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
     stop_job(args, hosts[id], "zookeeper")
 
@@ -267,6 +271,8 @@ def restart(args):
   get_zk_service_config(args)
 
   hosts = args.zk_config.jobs["zookeeper"].hosts
+  if args.host is not None:
+    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
     stop_job(args, hosts[id], "zookeeper")
 
@@ -279,6 +285,8 @@ def show(args):
   get_zk_service_config(args)
 
   hosts = args.zk_config.jobs["zookeeper"].hosts
+  if args.host is not None:
+    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
     deploy_utils.show_job("zookeeper", args.zk_config,
         hosts[id], "zookeeper")

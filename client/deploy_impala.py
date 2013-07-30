@@ -171,6 +171,8 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.impala_config.jobs[job_name].hosts
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
     for id in args.task or hosts.iterkeys():
       start_job(args, hosts[id], job_name)
 
@@ -184,6 +186,8 @@ def stop(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.impala_config.jobs[job_name].hosts
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
     for id in args.task or hosts.iterkeys():
       stop_job(args, hosts[id], job_name)
 
@@ -194,6 +198,8 @@ def restart(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.impala_config.jobs[job_name].hosts
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
     for id in args.task or hosts.iterkeys():
       stop_job(args, hosts[id], job_name)
 
@@ -209,6 +215,8 @@ def show(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.impala_config.jobs[job_name].hosts
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
     for id in args.task or hosts.iterkeys():
       deploy_utils.show_job("impala", args.impala_config,
           hosts[id], job_name)

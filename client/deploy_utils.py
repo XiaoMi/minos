@@ -9,6 +9,7 @@ import os
 import pprint
 import re
 import string
+import socket
 import subprocess
 import sys
 import telnetlib
@@ -1064,6 +1065,21 @@ def generate_random_confirm_token():
   Generate a random 8 bytes token used to do confirm
   '''
   return str(uuid.uuid4())[0:8]
+
+def get_task_by_hostname(hosts, hostnames):
+  tasks = []
+  for hostname in hostnames:
+    host_ip = socket.gethostbyname(hostname)
+    found_task = False
+    for id in hosts.iterkeys():
+      if hosts[id] == host_ip:
+        tasks.append(id)
+        found_task = True
+        break
+    # return an invalid task id if can't find valid task 
+    if found_task == False:
+      raise ValueError(hostname + ' is not a valid host of cluster, please check your config')
+  return tasks
 
 if __name__ == '__main__':
   test()
