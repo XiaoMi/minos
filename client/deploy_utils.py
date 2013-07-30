@@ -367,6 +367,7 @@ class ServiceConfig:
                        self.base_port)
 
       self.hosts = {}
+      self.hostnames = {}
       for name, value in config.items(job_name):
         m = HOST_RULE_REGEX.match(name)
         if not m:
@@ -380,7 +381,12 @@ class ServiceConfig:
         m = HOST_REGEX.match(value)
         if not m:
           Log.print_critical("Host/IP address expected on rule: %s = %s" % (name, value))
-        self.hosts[host_id] = m.group("host")
+        ip = m.group("host")
+        self.hosts[host_id] = ip
+        try:
+          self.hostnames[host_id] = socket.gethostbyaddr(ip)[0]
+        except:
+          self.hostnames[host_id] = ip
 
       # parse the specific params this job:
       ServiceConfig.parse_params(self, config, job_name, schema)
@@ -1076,7 +1082,7 @@ def get_task_by_hostname(hosts, hostnames):
         tasks.append(id)
         found_task = True
         break
-    # return an invalid task id if can't find valid task 
+    # return an invalid task id if can't find valid task
     if found_task == False:
       raise ValueError(hostname + ' is not a valid host of cluster, please check your config')
   return tasks
