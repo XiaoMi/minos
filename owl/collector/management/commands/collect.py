@@ -417,9 +417,13 @@ class RegionOperationMetricAggregator:
     reactor.callInThread(self.aggregate_region_operation_metric_in_thread)
 
   def aggregate_region_operation_metric_in_thread(self):
-    self.last_aggregate_time = time.time()
-    self.aggregate_region_operation_metric_for_table_and_cluster()
-    self.schedule_next_aggregation()
+    try:
+      self.last_aggregate_time = time.time()
+      self.aggregate_region_operation_metric_for_table_and_cluster()
+    except Exception as e:
+      logger.warning("failed to aggregate region operation metric:%r", e)
+    finally:
+      self.schedule_next_aggregation()
     return
 
   def make_empty_operation_metric(self):
@@ -498,7 +502,7 @@ class RegionOperationMetricAggregator:
 
       reactor.callFromThread(reactor.callLater, wait_time, self.aggregate_region_operation_metric)
     else:
-      self.aggregate_region_operation_metric()
+      reactor.callFromThread(self.aggregate_region_operation_metric)
     return
 
 class StatusUpdater:
