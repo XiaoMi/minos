@@ -126,6 +126,7 @@ def show_cluster_table_board(request, id):
   tables = dbutil.get_items_on_cluster(cluster, 'table', order_by='-qps')
   system_tables = [table for table in tables if is_system_table(table)]
   user_tables = [table for table in tables if not is_system_table(table)]
+
   table_read_item_keys = '|'.join(['%s-readRequestsCountPerSec' % (table.name) for table in user_tables])
   table_write_item_keys ='|'.join(['%s-writeRequestsCountPerSec' % (table.name) for table in user_tables])
 
@@ -257,6 +258,19 @@ def show_table_operation(request, id):
     'endpoint' : endpoint
   }
   return respond(request, 'monitor/hbase_table_operation.html', params)
+
+#url: /regionserver/operation/$rs_id
+def show_regionserver_operation(request, id):
+  regionserver = dbutil.get_regionserver(id)
+  cluster = regionserver.cluster
+  endpoint = metric_helper.form_perf_counter_endpoint_name(regionserver.task)
+  params = {
+    'cluster' : cluster,
+    'regionserver' : regionserver,
+    'metrics' : metric_helper.generate_operation_metric_for_regionserver(regionserver),
+    'endpoint' : endpoint
+  }
+  return respond(request, 'monitor/hbase_regionserver_operation.html', params)
 
 #url: /cluster/operation/$cluster_id
 def show_cluster_operation(request, id):

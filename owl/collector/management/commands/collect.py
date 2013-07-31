@@ -26,6 +26,8 @@ from monitor.models import Service, Cluster, Job, Task, RegionServer, Table, Reg
 from twisted.internet import reactor
 from twisted.web import client
 
+import socket
+
 # now, we use multi-threads to read/write from/to db; if expect only one-thread, using the following config
 #reactor.suggestThreadPoolSize(1)
 
@@ -42,6 +44,7 @@ BOOL_METRIC_MAP = {
 REGION_SERVER_DYNAMIC_STATISTICS_BEAN_NAME = 'hadoop:service=RegionServer,name=RegionServerDynamicStatistics'
 REGION_SERVER_BEAN_NAME = 'hadoop:service=RegionServer,name=RegionServer'
 
+# TODO: move these suffix definition to monitor/metric_help.py
 OPERATION_NUM_OPS = 'NumOps'
 OPERATION_AVG_TIME = 'AvgTime'
 OPERATION_MIN_TIME = 'MinTime'
@@ -251,6 +254,15 @@ class MetricSource:
     logger.info("%r batch save region record for region_server, saved regions=%d, consume=%s",
         self.task, len(region_record_need_save), str((datetime.datetime.now() - begin).total_seconds()))
 
+  def get_host_and_port_from_region_server_name(self, rs_name):
+    # rs name format is formatted as : sd-ml-hadoop23.bj,21600,1374135199948
+    tokens = rs_name.split(',')
+    # host represents the ip of the server
+    host = socket.gethostbyname(tokens[0])
+    # jmx port is rs_port + 1, host and jmx port will identify a task
+    port = int(tokens[1]) + 1
+    return [host, port]
+
   def analyze_hbase_master_metrics(self, metrics):
     cluster = self.task.job.cluster
     hbase_cluster_record, created = HBaseCluster.objects.get_or_create(cluster = cluster)
@@ -263,9 +275,14 @@ class MetricSource:
           continue
         for rs_metrics in bean['RegionServers']:
           rs_name = rs_metrics['key']
-
+          [rs_host, rs_port] = self.get_host_and_port_from_region_server_name(rs_name)
+          rs_task = dbutil.get_task_by_host_and_port(rs_host, rs_port)
           rs_record, created = RegionServer.objects.get_or_create(cluster = cluster,
-                                                                  name = rs_name)
+                                                                  task = rs_task)
+          # region server name includes startTime, which means the same region server
+          # will lead different RegionServer records if the region server restarts.
+          # Therefore, we won't create region server by its name.
+          rs_record.name = rs_name
 
           rs_value = rs_metrics['value']
           rs_record.last_attempt_time = self.task.last_attempt_time
@@ -432,15 +449,20 @@ class RegionOperationMetricAggregator:
     operationMetric[OPERATION_TOTAL_TIME] = 0
     operationMetric[OPERATION_MAX_TIME] = 0
     operationMetric[OPERATION_MIN_TIME] = sys.maxint
+    for percentileSuffix in OPERATION_HISTOGRAM_PERCENTILES:
+      operationMetric[percentileSuffix] = 0
+    operationMetric[OPERATION_HISTOGRAM_REGION_COUNT] = 0
+
     return operationMetric
 
   def aggregate_one_region_operation_metric(self, aggregateMetric, deltaMetric):
-    aggregateMetric[OPERATION_NUM_OPS] += deltaMetric[OPERATION_NUM_OPS]
-    aggregateMetric[OPERATION_TOTAL_TIME] += deltaMetric[OPERATION_AVG_TIME] * deltaMetric[OPERATION_NUM_OPS]
-    if aggregateMetric[OPERATION_MAX_TIME] < deltaMetric[OPERATION_MAX_TIME]:
-      aggregateMetric[OPERATION_MAX_TIME] = deltaMetric[OPERATION_MAX_TIME]
-    if aggregateMetric[OPERATION_MIN_TIME] > deltaMetric[OPERATION_MIN_TIME]:
-      aggregateMetric[OPERATION_MIN_TIME] = deltaMetric[OPERATION_MIN_TIME]
+    if OPERATION_NUM_OPS in deltaMetric:
+      aggregateMetric[OPERATION_NUM_OPS] += deltaMetric[OPERATION_NUM_OPS]
+      aggregateMetric[OPERATION_TOTAL_TIME] += deltaMetric[OPERATION_AVG_TIME] * deltaMetric[OPERATION_NUM_OPS]
+      if aggregateMetric[OPERATION_MAX_TIME] < deltaMetric[OPERATION_MAX_TIME]:
+        aggregateMetric[OPERATION_MAX_TIME] = deltaMetric[OPERATION_MAX_TIME]
+      if aggregateMetric[OPERATION_MIN_TIME] > deltaMetric[OPERATION_MIN_TIME]:
+        aggregateMetric[OPERATION_MIN_TIME] = deltaMetric[OPERATION_MIN_TIME]
 
   def compute_avg_time_and_num_ops_after_aggregation(self, operationMetrics):
     for operationName in operationMetrics.keys():
@@ -463,8 +485,9 @@ class RegionOperationMetricAggregator:
       tableOperationMetric = {}
       regions = dbutil.get_region_by_table(table)
       logger.info(
-          "TableOperationMetricAggregation aggregate %d regions metric for table %s" ,
-          len(regions), table.name)
+          "TableOperationMetricAggregation aggregate %d regions metric for table %s, cluster %s" ,
+           len(regions), table.name, clusterName)
+
       for region in regions:
         if region.operationMetrics is None or region.operationMetrics == '':
           continue;

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/task">Tasks</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/table">Tables</a>
+        </li>
+        <li>
+            <a href="/monitor/cluster/{{ cluster.id }}/regionserver">Regionservers</a>
+        </li>
+    </ul>
+
+    
+    <div class="row">
+        <div id="sidebar" class="span1">
+            <ul class="nav nav-list affix">
+                <li><a href="/monitor/regionserver/{{regionserver.id}}">SummaryMetrics</a></li>
+                <li><strong>---------------</strong></li>
+                {% for metric in metrics%}
+                <li><a href="#{{metric.0}}">{{metric.0}}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="span11">
+        {% for metric in metrics %}
+        <section id="{{metric.0}}">
+            <div class="row">
+                <div class="span11">
+                  <!-- show NumOps -->
+                  <div class="span5">
+                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                    allowtransparency="yes" class="span6" style="margin:0px;"
+                    height="350"
+                    src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=top&legend_num=4&hosts={{ endpoint }}&item_keys={{ metric.1 }}&big=12&height=250&graph_type=k"></iframe>
+                  </div>
+
+                  <!-- show percentile graph if necessary -->
+                  <div class="span5">
+                    <iframe frameborder="no" border="0" marginwidth="0" marginheight="0" scrolling="auto"
+                      allowtransparency="yes" class="span6" style="margin:0px;"
+                      height="350"
+                      src="{{chart_url_prefix}}/charts?zname=perf&legend_pos=top&legend_num=4&hosts={{ endpoint }}&item_keys={{ metric.2 }}&big=12&height=250&graph_type=k"></iframe>
+                  </div>
+            </div>
+        </section>
+        {% endfor %}
+        </div>
+    </div>
+{% endblock %}

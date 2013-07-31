@@ -71,6 +71,8 @@ def get_tasks_by_service(service_id=None):
   if service_id: filters["job__cluster__service"] = service_id
   return Task.objects.filter(**filters).all()
 
+def get_task_by_host_and_port(host, port):
+  return Task.objects.get(host = host, port = port)
 
 def get_task(id):
   try:
@@ -315,7 +317,8 @@ def get_region_by_regionserver_and_encodename(region_server, encodeName):
     return None
 
 def get_region_by_table(tableObj):
-  return Region.objects.filter(table = tableObj).all()
+  # must use last_attemp_time to filter deleted-regions
+  return Region.objects.filter(table = tableObj).filter(last_attempt_time__gte = alive_time_threshold()).all()
 
 # attr should be 'regionserver' or 'table'
 def get_requests_distribution_groupby(cluster, attr):

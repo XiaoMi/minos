@@ -4,6 +4,16 @@ import dbutil
 import json
 import metric_view_config
 
+# define operation metric suffix
+OPERATION_HISTOGRAM_75th_TIME = 'histogram_75th_percentile'
+OPERATION_HISTOGRAM_95th_TIME = 'histogram_95th_percentile'
+OPERATION_HISTOGRAM_99th_TIME = 'histogram_99th_percentile'
+OPERATION_HISTOGRAM_999th_TIME = 'histogram_999th_percentile'
+OPERATION_HISTOGRAM_PERCENTILES = [OPERATION_HISTOGRAM_75th_TIME,
+                                   OPERATION_HISTOGRAM_95th_TIME,
+                                   OPERATION_HISTOGRAM_99th_TIME,
+                                   OPERATION_HISTOGRAM_999th_TIME]
+
 def form_perf_counter_endpoint_name(task):
   delimiter = '-'
   endpoint_name = delimiter.join((task.host, str(task.port)))
@@ -11,6 +21,12 @@ def form_perf_counter_endpoint_name(task):
 
 def form_perf_counter_group_name(task, bean_name):
   return parse_bean_name(bean_name)[0]
+
+def form_percentile_counter_name(group, operationName):
+  percentiles = []
+  for suffix in OPERATION_HISTOGRAM_PERCENTILES:
+    percentiles.append('%s-%s_%s' % (group, operationName, suffix))
+  return '|'.join(percentiles)
 
 # parse bean name
 # return (service, name)
@@ -182,3 +198,21 @@ def make_operation_metrics_for_tables_in_cluster(cluster):
         metrics[operationName][1]['query'].append(make_metric_query(endpoint, group, avgTimeCounterName))
 
   return metrics
+
+# metric is an array of counters, where counter is formatted as:
+# [operationName, CounterOfNumOps, CountersOfPercentile]
+def generate_operation_metric_for_regionserver(regionserver):
+  task = regionserver.task
+  metric = []
+  group = 'HBase'
+  for operationName in metric_view_config.REGION_SERVER_OPERATION_VIEW_CONFIG:
+    counter = []
+    # first append operationName
+    counter.append(operationName)
+    # then, append counter for NumOps
+    counter.append('%s-%s_histogram_num_ops' % (group, operationName))
+    # lastly, append counters for percentile
+    counter.append(form_percentile_counter_name(group, operationName))
+
+    metric.append(counter)
+  return metric

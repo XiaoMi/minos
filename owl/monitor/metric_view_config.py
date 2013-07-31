@@ -423,3 +423,6 @@ JOB_METRICS_VIEW_CONFIG = {
     ],
   }
 }
+
+REGION_SERVER_OPERATION_VIEW_CONFIG = ['multi', 'get', 'openScanner', 'next',
+                                       'delete', 'checkAndPut', 'execCoprocessor']

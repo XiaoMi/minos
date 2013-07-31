@@ -11,7 +11,6 @@ DEFAULT_DATETIME = datetime.datetime(1970, 1, 1, tzinfo=timezone.utc)
 # considered as fialed.
 FAIL_TIME = 30
 
-
 # The item could be cluster, job, or task.
 def is_healthy(item, fail_time=FAIL_TIME):
   delta = datetime.timedelta(seconds=fail_time)
@@ -134,6 +133,9 @@ class Task(models.Model):
   # The last raw metric values fetched from http server, for debug purpose
   last_metrics_raw = models.TextField()
 
+  class Meta:
+    index_together = [["host", "port"],]
+
   @property
   def health(self):
     return is_healthy(self)
@@ -154,6 +156,7 @@ class HBaseCluster(models.Model):
 
 class RegionServer(models.Model):
   cluster = models.ForeignKey(Cluster, db_index=True)
+  task = models.OneToOneField(Task, db_index=True)
   name = models.CharField(max_length=128)
   last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
   load = models.IntegerField(default = 0)
@@ -263,15 +266,33 @@ class Region(models.Model):
     self.requestsCount = region_value['requestsCount']
 
   # operation metric from jmx is formatted as: 'tbl.tableName.region.encodeName.operationName_Suffix : value'
-  # where Suffix could be OpsNum, AvgTime, MaxTime, MinTime. We save all operation metrics as the a map:
-  # {operationName : {{OpsNum : value}, {AvgTime, value}, {MaxTime, value}, {MinTime, value}}}. Then, the map
-  # will be converted to a json format and into self.operationMetrics
+  # where Suffix could be OpsNum, AvgTime, MaxTime, MinTime, histogram_75percentile, histogram_95percentile etc.
+  # We save all operation metrics as the a map: {operationName : {{OpsNum : value}, {AvgTime, value}, ...}}.
+  # Then, the map will be converted to a json format and into self.operationMetrics
   def analyze_from_region_server_operation_metrics(self, region_operation_metrics, update_time):
     self.last_operation_attempt_time = update_time
     metric_saved = {}
     for region_operation in region_operation_metrics.keys():
       tokens = region_operation.split('.')
-      operationName, suffix = tokens[len(tokens) - 1].split('_')
+      tokens = tokens[len(tokens) - 1].split('_')
+      tokens_len = len(tokens)
+
+      index = 0
+      while index < tokens_len:
+        if tokens[index] == 'histogram':
+          break;
+        index = index + 1
+
+      operationName = ''
+      suffix = ''
+      if index < tokens_len:
+        # for histogram metics
+        operationName = '_'.join(tokens[0 : index])
+        suffix = '_'.join(tokens[index : tokens_len])
+      else:
+        operationName = '_'.join(tokens[0 : tokens_len - 1])
+        suffix = tokens[tokens_len - 1]
+
       operationMetric = metric_saved.setdefault(operationName, {})
       operationMetric[suffix] = region_operation_metrics[region_operation]
     self.operationMetrics = json.dumps(metric_saved)

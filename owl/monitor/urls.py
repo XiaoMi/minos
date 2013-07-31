@@ -30,4 +30,5 @@ urlpatterns = patterns(
   url(r'^cluster/operation/(?P<id>\d+)/$', views.show_cluster_operation),
   url(r'^cluster/operation/tablecomparsion/(?P<id>\d+)/$', views.show_cluster_operation_table_comparison),
   url(r'^regionserver/(?P<id>\d+)/$', views.show_regionserver),
+  url(r'^regionserver/operation/(?P<id>\d+)/$', views.show_regionserver_operation),
 )
