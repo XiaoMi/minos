@@ -37,7 +37,7 @@ def get_service(id):
 def get_clusters_by_service(service_id=None):
   filters = {"active": True}
   if service_id: filters["service"] = service_id
-  return Cluster.objects.filter(**filters).all().order_by('service')
+  return Cluster.objects.filter(**filters).all().order_by('service', 'name')
 
 
 def get_cluster(id):
