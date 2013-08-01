@@ -818,7 +818,7 @@ class Command(BaseCommand):
           job = cluster.jobs[job_name]
           # We assume http port is always base_port + 1
           port = job.base_port + 1
-          for task_id, host in job.hosts.iteritems():
+          for task_id, host in job.hostnames.iteritems():
             task_record, created = Task.objects.get_or_create(
                 job=job_record, task_id=task_id,
                 defaults={"host":host, "port":port})
