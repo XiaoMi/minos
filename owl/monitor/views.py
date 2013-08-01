@@ -416,7 +416,7 @@ def get_time_range(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_counter(request):
-  counters = json.loads(request.POST.keys()[0])
+  counters = json.loads(request.body)
   remote_ip = request.META['REMOTE_ADDR']
   update_time = datetime.datetime.utcfromtimestamp(time.time()).replace(tzinfo=timezone.utc)
   for dict in counters:
