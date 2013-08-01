@@ -173,7 +173,7 @@ def generate_start_script(args, host, job_name):
           '-verbose:gc ' +
           '-XX:+PrintGCDetails ' +
           '-XX:+PrintGCDateStamps ' +
-          '-Xloggc:$log_dir/zk_gc_${start_time}.log ' +
+          '-Xloggc:$run_dir/stdout/zk_gc_${start_time}.log ' +
           '-Djava.net.preferIPv4Stack=true ' +
           '-Dzookeeper.log.dir=$log_dir ' +
           '-Dzookeeper.cluster=%s ' % args.zk_config.cluster.name +

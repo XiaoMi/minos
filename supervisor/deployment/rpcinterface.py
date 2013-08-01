@@ -63,6 +63,18 @@ class DeploymentRPCInterface:
     log_root = self.global_config.get('log_root', DEFAULT_LOG_ROOT)
     return '%s/%s/%s/%s' % (log_root, service, cluster, job)
 
+  def get_stdout_dir(self, service, cluster, job):
+    '''
+    Get the stdout directory of the specified job
+
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's log root directory
+    '''
+    run_dir = self.get_run_dir(service, cluster, job)
+    return '%s/stdout' % run_dir
+
   def get_available_data_dirs(self, service, cluster, job):
     '''
     Get all the available data directories that the specified job may use
@@ -382,6 +394,11 @@ class DeploymentRPCInterface:
     run_dir = self.get_run_dir(service, cluster, job)
     if not os.path.exists(run_dir):
       os.makedirs(run_dir)
+
+    # Create stdout dir
+    stdout_dir = self.get_stdout_dir(service, cluster, job)
+    if not os.path.exists(stdout_dir):
+      os.makedirs(stdout_dir)
 
     # Create and link log dir to the run dir
     log_dir = self.get_log_dir(service, cluster, job)

@@ -227,7 +227,7 @@ def generate_run_scripts_params(args, host, job_name):
           '-verbose:gc ' +
           '-XX:+PrintGCDetails ' +
           '-XX:+PrintGCDateStamps ' +
-          '-Xloggc:$log_dir/%s_gc_${start_time}.log ' % job_name +
+          '-Xloggc:$run_dir/stdout/%s_gc_${start_time}.log ' % job_name +
           '-XX:+UseMembar ' +
           '-XX:SurvivorRatio=1 ' +
           '-XX:+UseCMSCompactAtFullCollection ' +

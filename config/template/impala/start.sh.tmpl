@@ -11,7 +11,7 @@ run_dir=`cd "$run_dir"; pwd`
 start_time=`date +%%Y%%m%%d-%%H%%M%%S`
 
 package_dir="$run_dir/package"
-output_file="$run_dir/log/${job_name}_${start_time}.out"
+output_file="$run_dir/stdout/${job_name}_${start_time}.out"
 jar_dir="$package_dir/jar"
 lib_dir="$package_dir/lib"
 
