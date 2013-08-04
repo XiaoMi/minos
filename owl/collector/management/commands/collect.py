@@ -255,13 +255,22 @@ class MetricSource:
         self.task, len(region_record_need_save), str((datetime.datetime.now() - begin).total_seconds()))
 
   def get_host_and_port_from_region_server_name(self, rs_name):
-    # rs name format is formatted as : sd-ml-hadoop23.bj,21600,1374135199948
+    # rs name format is formatted as : host_name,port,start_code.
+    # for some cluster, the format may be : host_ip,port,start_code.
+    # we will try to convert host_ip to coprresonding host_name
+    # because we always try to save host_name and port to identity a task
+    # except that we can't get host_name from host_ip
     tokens = rs_name.split(',')
-    # host represents the ip of the server
-    host = socket.gethostbyname(tokens[0])
+    host = tokens[0] # may be host_name or host_ip
+    host_name = None 
+    try:
+      host_name = socket.gethostbyaddr(host)[0]
+    except:
+      logger.warning("can't get host_name for host=%s", host)
+      host_name = host
     # jmx port is rs_port + 1, host and jmx port will identify a task
     port = int(tokens[1]) + 1
-    return [host, port]
+    return [host_name, port]
 
   def analyze_hbase_master_metrics(self, metrics):
     cluster = self.task.job.cluster
@@ -275,8 +284,8 @@ class MetricSource:
           continue
         for rs_metrics in bean['RegionServers']:
           rs_name = rs_metrics['key']
-          [rs_host, rs_port] = self.get_host_and_port_from_region_server_name(rs_name)
-          rs_task = dbutil.get_task_by_host_and_port(rs_host, rs_port)
+          [rs_hostname, rs_port] = self.get_host_and_port_from_region_server_name(rs_name)
+          rs_task = dbutil.get_task_by_host_and_port(rs_hostname, rs_port)
           rs_record, created = RegionServer.objects.get_or_create(cluster = cluster,
                                                                   task = rs_task)
           # region server name includes startTime, which means the same region server
@@ -449,10 +458,6 @@ class RegionOperationMetricAggregator:
     operationMetric[OPERATION_TOTAL_TIME] = 0
     operationMetric[OPERATION_MAX_TIME] = 0
     operationMetric[OPERATION_MIN_TIME] = sys.maxint
-    for percentileSuffix in OPERATION_HISTOGRAM_PERCENTILES:
-      operationMetric[percentileSuffix] = 0
-    operationMetric[OPERATION_HISTOGRAM_REGION_COUNT] = 0
-
     return operationMetric
 
   def aggregate_one_region_operation_metric(self, aggregateMetric, deltaMetric):
