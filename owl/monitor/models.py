@@ -255,9 +255,13 @@ class Region(models.Model):
     self.readRequestsCountPerSec = \
         (region_value['readRequestsCount'] - self.readRequestsCount)\
         / time_interval
+    if self.readRequestsCountPerSec < 0:
+      self.readRequestsCountPerSec = 0
     self.writeRequestsCountPerSec = \
         (region_value['writeRequestsCount'] - self.writeRequestsCount)\
         / time_interval
+    if self.writeRequestsCountPerSec < 0:
+      self.writeRequestsCountPerSec = 0
     self.last_attempt_time = update_time
     self.memStoreSizeMB = region_value['memStoreSizeMB']
     self.storefileSizeMB = region_value['storefileSizeMB']
