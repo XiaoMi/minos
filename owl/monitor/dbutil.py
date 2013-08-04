@@ -10,6 +10,7 @@ import time
 import MySQLdb
 from DBUtils.PooledDB import PooledDB
 
+from django.conf import settings
 from django.utils import timezone
 
 from models import Service, Cluster, Job, Task, Status
@@ -20,8 +21,15 @@ import metric_helper
 
 logger = logging.getLogger(__name__)
 
+db_settings = settings.DATABASES['default']
 # we use db connection pool to execute batch update
-DBConnectionPool = PooledDB(MySQLdb, maxusage = 10, mincached = 5, db = 'owl', host = 'localhost', user = 'owl', passwd = 'owl', charset = 'utf8')
+DBConnectionPool = PooledDB(MySQLdb, maxusage = 10, mincached = 5,
+                            db = db_settings['NAME'],
+                            host = db_settings['HOST'],
+                            port = int(db_settings['PORT']),
+                            user = db_settings['USER'],
+                            passwd = db_settings['PASSWORD'],
+                            charset = 'utf8')
 
 def get_services():
   return Service.objects.filter(active=True).all()
