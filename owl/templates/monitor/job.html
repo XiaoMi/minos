@@ -35,14 +35,14 @@
     <div class="row">
         <div id="sidebar" class="span1">
             <ul class="nav nav-list affix">
-                {% for view_tag, graph in tsdb_metrics.iteritems%}
+                {% for view_tag, graph in tsdb_metrics%}
                 <li><a href="#{{view_tag}}">{{view_tag}}</a></li>
                 {% endfor %}
             </ul>
         </div>
 
         <div class="span11">
-            {% for view_tag, graphs in tsdb_metrics.iteritems%}
+            {% for view_tag, graphs in tsdb_metrics%}
             <section id="{{view_tag}}">
             <div class="row">
             {% for graph in graphs %}

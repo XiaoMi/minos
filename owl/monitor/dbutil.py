@@ -69,6 +69,8 @@ def get_job(id):
 def get_tasks_by_job(job_id):
   return Task.objects.filter(job=job_id, active=True).all()
 
+def get_healthy_tasks_by_job(job_id):
+  return filter(lambda x: x.health, Task.objects.filter(job=job_id, active=True).all())
 
 def get_tasks_by_cluster(cluster_id):
   return Task.objects.filter(job__cluster=cluster_id, active=True).order_by('job', 'id')

@@ -107,24 +107,25 @@ def make_metric_query(endpoint, group, key):
   return "&m=sum:%s{host=%s,group=%s}&o=" % (key, endpoint, group)
 
 def make_metrics_query_for_task(endpoint, task):
-  metrics = {}
+  metrics = []
   task_view_config = task_metrics_view_config(task)
   for view_tag, view_config in task_view_config:
-    metrics[view_tag] = []
+    metrics_view = []
     for graph_config in view_config:
       group, key, unit = graph_config[0]
       graph = {
         'title' : '%s:%s' % (group, key),
         'query' : make_metric_query(endpoint, group, key),
       }
-      metrics[view_tag].append(graph)
+      metrics_view.append(graph)
+    metrics.append((view_tag, metrics_view))
   return metrics
 
 def make_metrics_query_for_job(endpoints, job, tasks):
-  metrics = {}
+  metrics = []
   task_view_config = job_metrics_view_config(job)
   for view_tag, view_config in task_view_config:
-    metrics[view_tag] = []
+    metrics_view = []
     for graph_config in view_config:
       group, key, unit = graph_config[0]
       graph = {
@@ -133,7 +134,8 @@ def make_metrics_query_for_job(endpoints, job, tasks):
       }
       for endpoint in endpoints:
         graph['query'].append(make_metric_query(endpoint, group, key))
-      metrics[view_tag].append(graph)
+      metrics_view.append(graph)
+    metrics.append((view_tag, metrics_view))
   return metrics
 
 # metrics is an array of counters, where the counter is formatted as :

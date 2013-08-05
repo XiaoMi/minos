@@ -335,7 +335,7 @@ def show_regionserver(request, id):
 
 #url: /job/$id/
 def show_job(request, id):
-  tasks = dbutil.get_tasks_by_job(id)
+  tasks = dbutil.get_healthy_tasks_by_job(id)
   job = dbutil.get_job(id)
 
   endpoints = [metric_helper.form_perf_counter_endpoint_name(task) for task in tasks]
