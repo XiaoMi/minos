@@ -208,6 +208,21 @@ class StatusChecker:
       job.last_message = "Too few running historyserver!"
     cluster.last_status = max([job.last_status for job in cluster.jobs.itervalues()])
 
+  def check_impala_cluster_status(self, cluster):
+    job = cluster.jobs["statestored"]
+    for task in job.running_tasks.itervalues():
+      # update cluster entry
+      cluster.entry = '%s:%d' % (task.host, task.port)
+    if job.running_tasks_count < 1:
+      job.last_status = Status.ERROR
+      job.last_message = "No running statestored!"
+
+    job = cluster.jobs["impalad"]
+    if job.running_tasks_count < 3:
+      job.last_status = Status.ERROR
+      job.last_message = "Too few running impalad!"
+    cluster.last_status = max([job.last_status for job in cluster.jobs.itervalues()])
+
   def check_cluster_status(self, cluster):
     cluster.jobs = {}
     cluster.last_status = Status.OK
@@ -231,6 +246,7 @@ class StatusChecker:
         "hdfs": self.check_hdfs_cluster_status,
         "hbase": self.check_hbase_cluster_status,
         "yarn": self.check_yarn_cluster_status,
+        "impala": self.check_impala_cluster_status,
     }
     service_handler[cluster.service.name](cluster)
     self.handle_status_result(cluster)

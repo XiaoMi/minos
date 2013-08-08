@@ -262,7 +262,7 @@ class MetricSource:
     # except that we can't get host_name from host_ip
     tokens = rs_name.split(',')
     host = tokens[0] # may be host_name or host_ip
-    host_name = None 
+    host_name = None
     try:
       host_name = socket.gethostbyaddr(host)[0]
     except:
@@ -743,17 +743,20 @@ class StatusUpdater:
         len(reactor.getThreadPool().working),
         len(reactor.getThreadPool().threads))
 
-    self.start_time = time.time()
-    for cluster in Cluster.objects.filter(active=True).all():
-      self.update_cluster_status(cluster)
-    logger.info("spent %f seconds for updating clusters status",
-        time.time() - self.start_time)
-    logger.info("gc: %r", gc.get_count())
-    logger.info("usage: %r", resource.getrusage(resource.RUSAGE_SELF))
-
-    # reactor.callLater is NOT thread-safe but reactor.callFromThread is, so we
-    # put the callLater to the main loop.
-    reactor.callFromThread(
+    try:
+      self.start_time = time.time()
+      for cluster in Cluster.objects.filter(active=True).all():
+        self.update_cluster_status(cluster)
+      logger.info("spent %f seconds for updating clusters status",
+          time.time() - self.start_time)
+      logger.info("gc: %r", gc.get_count())
+      logger.info("usage: %r", resource.getrusage(resource.RUSAGE_SELF))
+    except Exception as e:
+      logger.warning("%Failed to update statu: %r", e)
+    finally:
+      # reactor.callLater is NOT thread-safe but reactor.callFromThread is, so we
+      # put the callLater to the main loop.
+      reactor.callFromThread(
         reactor.callLater, self.collector_config.period, self.update_status)
 
 
