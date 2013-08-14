@@ -97,6 +97,7 @@ class Supervisor:
             # writing pid file needs to come *after* daemonizing or pid
             # will be wrong
             self.options.write_pidfile()
+            self.options.load_subproc_pidfile(self.process_groups)
             self.runforever()
         finally:
             self.options.cleanup()
@@ -192,6 +193,16 @@ class Supervisor:
             pgroups.sort()
 
             if self.options.mood < SupervisorStates.RUNNING:
+                if self.options.subprocpidfile:
+                    # 'subprocpidfile' option is set, which implies that all
+                    # managed sub-processes should NOT be killed and would
+                    # continue to run even supervisord exits. the supervisord
+                    # would also continue to manage these sub-processes after
+                    # it restarts.
+                    self.options.logger.info('exiting without killing managed '
+                                             'sub-processes')
+                    raise asyncore.ExitNow
+
                 if not self.stopping:
                     # first time, set the stopping flag, do a
                     # notification and set stop_groups
@@ -281,12 +292,12 @@ class Supervisor:
     def reap(self, once=False):
         pid, sts = self.options.waitpid()
         if pid:
-            process = self.options.pidhistory.get(pid, None)
+            process = self.options.get_process(pid)
             if process is None:
                 self.options.logger.critical('reaped unknown pid %s)' % pid)
             else:
                 process.finish(pid, sts)
-                del self.options.pidhistory[pid]
+                self.options.del_process(pid)
             if not once:
                 self.reap() # keep reaping until no more kids to reap
 

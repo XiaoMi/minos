@@ -49,6 +49,8 @@ from supervisor.datatypes import auto_restart
 from supervisor.datatypes import profile_options
 from supervisor.datatypes import set_here
 
+from supervisor.states import ProcessStates
+
 from supervisor import loggers
 from supervisor import states
 from supervisor import xmlrpc
@@ -368,6 +370,7 @@ class ServerOptions(Options):
     logfile = None
     loglevel = None
     pidfile = None
+    subprocpidfile = None
     passwdfile = None
     nodaemon = None
     environment = None
@@ -399,6 +402,8 @@ class ServerOptions(Options):
                  logging_level, default="info")
         self.add("pidfile", "supervisord.pidfile", "j:", "pidfile=",
                  existing_dirpath, default="supervisord.pid")
+        self.add("subprocpidfile", "supervisord.subprocpidfile",
+                 "s:", "subprocpidfile=", existing_dirpath)
         self.add("identifier", "supervisord.identifier", "i:", "identifier=",
                  str, default="supervisor")
         self.add("childlogdir", "supervisord.childlogdir", "q:", "childlogdir=",
@@ -417,6 +422,7 @@ class ServerOptions(Options):
         self.process_group_configs = []
         self.parse_warnings = []
         self.signal_receiver = SignalReceiver()
+        self.resumed_pids = set()
 
     def version(self, dummy):
         """Print version to stdout and exit(0).
@@ -457,6 +463,14 @@ class ServerOptions(Options):
             pidfile = section.pidfile
 
         self.pidfile = normalize_path(pidfile)
+
+        if self.subprocpidfile:
+            subprocpidfile = self.subprocpidfile
+        else:
+            subprocpidfile = section.subprocpidfile
+
+        if subprocpidfile:
+            self.subprocpidfile = normalize_path(subprocpidfile)
 
         self.rpcinterface_factories = section.rpcinterface_factories
 
@@ -551,6 +565,7 @@ class ServerOptions(Options):
         section.logfile_backups = integer(get('logfile_backups', 10))
         section.loglevel = logging_level(get('loglevel', 'info'))
         section.pidfile = existing_dirpath(get('pidfile', 'supervisord.pid'))
+        section.subprocpidfile = existing_dirpath(get('subprocpidfile', ''))
         section.identifier = get('identifier', 'supervisor')
         section.nodaemon = boolean(get('nodaemon', 'false'))
 
@@ -1017,6 +1032,75 @@ class ServerOptions(Options):
         else:
             self.logger.info('supervisord started with pid %s' % pid)
 
+    def add_process(self, process):
+        self.pidhistory[process.pid] = process
+        self.write_subproc_pidfile()
+
+    def del_process(self, pid):
+        del self.pidhistory[pid]
+        self.write_subproc_pidfile()
+
+    def get_process(self, pid):
+        return self.pidhistory.get(pid, None)
+
+    def write_subproc_pidfile(self):
+        if not self.subprocpidfile: return
+        try:
+            f = open(self.subprocpidfile, 'w')
+            for pid, process in self.pidhistory.iteritems():
+                f.write('%s %d %d\n' %
+                        (process.config.name, pid, process.laststart))
+            f.close()
+        except (IOError, OSError):
+            self.logger.critical('could not write sub-process pidfile %s' %
+                                 self.subprocpidfile)
+        else:
+            self.logger.info('supervisord wrote sub-process pidfile')
+
+    def load_subproc_pidfile(self, process_groups):
+        if not self.subprocpidfile: return
+        resumed_processes = {}
+        try:
+            f = open(self.subprocpidfile, 'r')
+            for line in f:
+                process_name, pid, laststart = line.split()
+                pid = int(pid)
+                laststart = int(laststart)
+                try:
+                    os.kill(pid, 0)
+                except:
+                    self.logger.info(
+                        "pid doesn't exist, can't resume '%s' with pid %d" %
+                        (process_name, pid))
+                else:
+                    self.logger.info(
+                        "would resume process '%s' with pid %d later" %
+                        (process_name, pid))
+                    resumed_processes[process_name] = (pid, laststart)
+            f.close()
+        except (IOError, OSError, ValueError) as e:
+            self.logger.warn('could not load sub-process pidfile %s' %
+                             self.subprocpidfile)
+            print type(e)
+        else:
+            self.logger.info('supervisord load sub-process pidfile')
+
+        for group in process_groups.itervalues():
+            for process in group.processes.itervalues():
+                process_name = process.config.name
+                if process_name in resumed_processes:
+                    process.pid, process.laststart = resumed_processes[process_name]
+                    process.resumed = True
+                    process.change_state(ProcessStates.RUNNING)
+                    self.add_process(process)
+
+                    del resumed_processes[process_name]
+                    self.resumed_pids.add(process.pid)
+
+                    self.logger.info(
+                        "success: resumed process '%s' with pid %d" %
+                        (process_name, process.pid))
+
     def cleanup(self):
         try:
             for config, server in self.httpservers:
@@ -1186,6 +1270,17 @@ class ServerOptions(Options):
         os.setuid(uid)
 
     def waitpid(self):
+        # firstly send a signal to all resumed processes to check if they are
+        # still running. resumed process is NOT spawned child process of
+        # supervisord, so the os.waitpid doesn't work.
+        for pid in self.resumed_pids:
+            try:
+                os.kill(pid, 0)
+            except:
+                # got an exception, we blindly consider the process has exited.
+                self.resumed_pids.remove(pid)
+                return pid, 0
+
         # need pthread_sigmask here to avoid concurrent sigchild, but
         # Python doesn't offer it as it's not standard across UNIX versions.
         # there is still a race condition here; we can get a sigchild while

@@ -49,6 +49,8 @@ class Subprocess:
     exitstatus = None # status attached to dead process by finsh()
     spawnerr = None # error message attached by spawn() if any
     group = None # ProcessGroup instance if process is in the group
+    resumed = False # whether the process is created by a previous supervisord
+                    # instance and is resumed by current supervisord
     
     def __init__(self, config):
         """Constructor.
@@ -254,7 +256,8 @@ class Subprocess:
         options.logger.info('spawned: %r with pid %s' % (self.config.name, pid))
         self.spawnerr = None
         self.delay = time.time() + self.config.startsecs
-        options.pidhistory[pid] = self
+        self.resumed = False
+        options.add_process(self)
         return pid
 
     def _prepare_child_fds(self):
@@ -465,7 +468,8 @@ class Subprocess:
         self.config.options.logger.info(msg)
 
         self.pid = 0
-        self.config.options.close_parent_pipes(self.pipes)
+        if not self.resumed:
+            self.config.options.close_parent_pipes(self.pipes)
         self.pipes = {}
         self.dispatchers = {}
 

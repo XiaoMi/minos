@@ -474,6 +474,8 @@ class SupervisorNamespaceRPCInterface:
             now_dt = datetime.datetime(*time.gmtime(now)[:6])
             uptime = now_dt - start_dt
             desc = 'pid %s, uptime %s' % (info['pid'], uptime)
+            if info['resumed']:
+                desc += ' [resumed]'
 
         elif state in (ProcessStates.FATAL, ProcessStates.BACKOFF):
             desc = info['spawnerr']
@@ -527,6 +529,7 @@ class SupervisorNamespaceRPCInterface:
             'stdout_logfile':stdout_logfile,
             'stderr_logfile':stderr_logfile,
             'pid':process.pid,
+            'resumed':process.resumed,
             }
 
         description = self._interpretProcessInfo(info)
