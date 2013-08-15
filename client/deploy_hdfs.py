@@ -83,6 +83,13 @@ def generate_core_site_dict(args, job_name, http_user,
       "hadoop.http.staticuser.user": http_user,
   }
 
+  # config to enable hdfs users access hdfs with the webhdfs proxy of hue
+  config_dict.update({
+    "hadoop.proxyuser.hue.hosts": "*"
+    "hadoop.proxyuser.hue.groups": "*"
+    "hue.kerberos.principal.shortname": "hue"
+  })
+
   # config security
   if security_enabled:
     config_dict.update({
