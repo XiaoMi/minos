@@ -84,12 +84,9 @@ def generate_hbase_site_dict(args, host, job_name):
         "hbase.tmp.dir": supervisor_client.get_available_data_dirs()[0],
     })
 
-  if args.hbase_config.cluster.enable_security:
-    # config security
+  if args.hdfs_config.cluster.enable_security:
     username = args.hbase_config.cluster.kerberos_username
     config_dict.update({
-        "hbase.security.authentication": "kerberos",
-        "hbase.rpc.engine": "org.apache.hadoop.hbase.ipc.SecureRpcEngine",
         "hbase.regionserver.kerberos.principal": "%s/hadoop@%s" % (
           args.hbase_config.cluster.kerberos_username or "hbase",
           args.hbase_config.cluster.kerberos_realm),
@@ -100,11 +97,22 @@ def generate_hbase_site_dict(args, host, job_name):
           args.hbase_config.cluster.kerberos_realm),
         "hbase.master.keytab.file": "%s/%s.keytab" % (
           deploy_utils.HADOOP_CONF_PATH, username),
+    })
+
+  if args.zk_config.cluster.enable_security:
+    config_dict.update({
         "hbase.zookeeper.property.authProvider.1":
           "org.apache.zookeeper.server.auth.SASLAuthenticationProvider",
         "hbase.zookeeper.property.kerberos.removeHostFromPrincipal": "true",
         "hbase.zookeeper.property.kerberos.removeRealmFromPrincipal": "true",
+    })
+
+  if args.hbase_config.cluster.enable_security:
+    # config security
+    config_dict.update({
         "hbase.security.authorization": "true",
+        "hbase.security.authentication": "kerberos",
+        "hbase.rpc.engine": "org.apache.hadoop.hbase.ipc.SecureRpcEngine",
         "hbase.coprocessor.region.classes":
           "org.apache.hadoop.hbase.security.token.TokenProvider",
     })
@@ -119,6 +127,7 @@ def generate_hbase_site_dict(args, host, job_name):
            "org.apache.hadoop.hbase.security.access.AccessController"),
         "hbase.superuser": "hbase_admin",
     })
+
   return config_dict
 
 def generate_hbase_site_xml(args, host, job_name):
@@ -170,7 +179,7 @@ def generate_metrics_config(args, host, job_name):
 def generate_configs(args, host, job_name):
   job = args.hbase_config.jobs[job_name]
   core_site_xml = deploy_hdfs.generate_core_site_xml(args, job_name, "hbase",
-      args.hbase_config.cluster.enable_security, job)
+      args.hdfs_config.cluster.enable_security, job)
   hdfs_site_xml = deploy_hdfs.generate_hdfs_site_xml_client(args)
   hbase_site_xml = generate_hbase_site_xml(args, host, job_name)
   hadoop_metrics_properties = generate_metrics_config(args, host, job_name)
