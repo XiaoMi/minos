@@ -171,14 +171,6 @@ TASK_METRICS_VIEW_CONFIG = {
         [('RegionServer', 'blockCacheMissCount', 'count(s)')],
         [('RegionServer', 'blockCacheSize', 'byte(s)' )],
       ]),
-      ('Replication', [
-        [('Replication', 'sizeOfLogQueue-5', '')],
-        [('Replication', 'ageOfLastShippedOp-5', '')],
-        [('Replication', 'logEditsReadRate-5', '')],
-        [('Replication', 'shippedOpsRate-5', '')],
-        [('Replication', 'logEditsFilteredRate-5', '')],
-        [('Replication', 'shippedBatchesRate-5', '')],
-      ]),
       ('FileSystem', [
         [('RegionServer', 'fsReadLatencyNumOps', 'op(s)')],
         [('RegionServer', 'fsReadLatencyAvgTime', 'ms(s)')],
@@ -426,3 +418,5 @@ JOB_METRICS_VIEW_CONFIG = {
 
 REGION_SERVER_OPERATION_VIEW_CONFIG = ['multi', 'get', 'openScanner', 'next',
                                        'delete', 'checkAndPut', 'execCoprocessor']
+REPLICATION_METRICS_VIEW_CONFIG = ['sizeOfLogQueue', 'ageOfLastShippedOp', 'logEditsReadRate',
+                                   'shippedOpsRate', 'logEditsFilteredRate', 'shippedBatchesRate']

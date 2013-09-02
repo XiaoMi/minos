@@ -1,29 +1,6 @@
-{% extends "base.html" %}
+{% extends "monitor/hbase_base.html" %}
 
-{% block content %}
-    <ul class="breadcrumb">
-        <li>
-            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
-                class="divider">/</span>
-        </li>
-        <li class="active">{{ cluster.name }}</li>
-    </ul>
-    <ul class="nav nav-pills">
-        <li>
-            <a href="/monitor/cluster/{{ cluster.id }}/task">Tasks</a>
-        </li>
-        <li>
-            <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
-        </li>
-        <li>
-            <a href="/monitor/cluster/{{ cluster.id }}/table">Tables</a>
-        </li>
-        <li>
-            <a href="/monitor/cluster/{{ cluster.id }}/regionserver">Regionservers</a>
-        </li>
-    </ul>
-
-    
+{% block hbase_content %}
     <div class="row">
         <div id="sidebar" class="span1">
             <ul class="nav nav-list affix">

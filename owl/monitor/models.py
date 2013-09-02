@@ -148,8 +148,9 @@ class HBaseCluster(models.Model):
 
   memStoreSizeMB = models.IntegerField(default = 0)
   storefileSizeMB = models.IntegerField(default = 0)
-  readRequestsCount = models.IntegerField(default = 0)
-  writeRequestsCount = models.IntegerField(default = 0)
+  # readRequestsCount and writeRequestsCount may exceed max integer
+  readRequestsCount = models.FloatField(default = 0, max_length = 20)
+  writeRequestsCount = models.FloatField(default = 0, max_length = 20)
   readRequestsCountPerSec = models.IntegerField(default = 0)
   writeRequestsCountPerSec = models.IntegerField(default = 0)
   operationMetrics = models.TextField() # save operation metrics as json format
@@ -169,6 +170,8 @@ class RegionServer(models.Model):
   writeRequestsCount = models.IntegerField(default = 0)
   readRequestsCountPerSec = models.IntegerField(default = 0)
   writeRequestsCountPerSec = models.IntegerField(default = 0)
+  replication_last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
+  replicationMetrics = models.TextField() # save replication metrics as json format
 
   def __unicode__(self):
     return unicode(self.name.split(',')[0])

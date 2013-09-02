@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load extended_filter %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/task/">Tasks</a>
+        </li>
+        <li class="active">
+        <a href="/monitor/cluster/{{ cluster.id }}/basic/">Basic</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/table/">Tables</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/regionserver/">Regionservers</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/replication/">Replication</a>
+        </li>
+    </ul>
+
+    {% block hbase_content %}{% endblock %}
+{% endblock %}

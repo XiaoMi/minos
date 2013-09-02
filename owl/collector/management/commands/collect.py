@@ -20,6 +20,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from monitor import dbutil
+from monitor import metric_helper
 from monitor.models import Status
 from monitor.models import Service, Cluster, Job, Task, RegionServer, Table, Region, HBaseCluster
 
@@ -43,6 +44,7 @@ BOOL_METRIC_MAP = {
 
 REGION_SERVER_DYNAMIC_STATISTICS_BEAN_NAME = 'hadoop:service=RegionServer,name=RegionServerDynamicStatistics'
 REGION_SERVER_BEAN_NAME = 'hadoop:service=RegionServer,name=RegionServer'
+REGION_SERVER_REPLICATION_BEAN_NAME_PREFIX = 'hadoop:service=Replication,name=ReplicationSource for'
 
 # TODO: move these suffix definition to monitor/metric_help.py
 OPERATION_NUM_OPS = 'NumOps'
@@ -207,22 +209,24 @@ class MetricSource:
   def analyze_hbase_region_server_metrics(self, metrics):
     region_server_name = None
     region_operation_metrics_dict = {}
+    replication_metrics_dict = {}
     for bean in metrics['beans']:
       try:
         # because root and meta region have the names, we must use region server
         # name and region name to locate a region
         if bean['name'] == REGION_SERVER_BEAN_NAME:
           region_server_name = bean['ServerName']
-          continue
-
-        if bean['name'] != REGION_SERVER_DYNAMIC_STATISTICS_BEAN_NAME:
-          continue
-        for metricName in bean.keys():
-          if Region.is_region_operation_metric_name(metricName):
-            encodeName = Region.get_encode_name_from_region_operation_metric_name(metricName)
-            region_operation_metrics = region_operation_metrics_dict.setdefault(encodeName, {})
-            region_operation_metrics[metricName] = bean[metricName]
-        break
+        elif bean['name'] == REGION_SERVER_DYNAMIC_STATISTICS_BEAN_NAME:
+          for metricName in bean.keys():
+            if Region.is_region_operation_metric_name(metricName):
+              encodeName = Region.get_encode_name_from_region_operation_metric_name(metricName)
+              region_operation_metrics = region_operation_metrics_dict.setdefault(encodeName, {})
+              region_operation_metrics[metricName] = bean[metricName]
+        elif bean['name'].startswith(REGION_SERVER_REPLICATION_BEAN_NAME_PREFIX):
+          peerId = metric_helper.parse_replication_source(bean['name'])
+          replication_metrics = replication_metrics_dict.setdefault(peerId, {})
+          for metricName in bean.keys():
+            replication_metrics[metricName] = bean[metricName]
       except Exception as e:
         logger.warning("%r failed to analyze metrics: %r", self.task, e)
         continue
@@ -236,6 +240,11 @@ class MetricSource:
       except RegionServer.DoesNotExist:
         logger.warning("%r failed to find region_server with region_server_name=%s", self.task, region_server_name)
         return
+
+    # save replication metrics for region server
+    region_server.replication_last_attempt_time = self.task.last_attempt_time
+    region_server.replicationMetrics = json.dumps(replication_metrics_dict)
+    region_server.save()
 
     region_record_need_save = []
     for encodeName, operationMetrics in region_operation_metrics_dict.iteritems():

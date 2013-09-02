@@ -128,14 +128,38 @@ def make_metrics_query_for_job(endpoints, job, tasks):
     metrics_view = []
     for graph_config in view_config:
       group, key, unit = graph_config[0]
-      graph = {
-        'title' : '%s:%s' % (group, key),
-        'query' : [],
-      }
-      for endpoint in endpoints:
-        graph['query'].append(make_metric_query(endpoint, group, key))
-      metrics_view.append(graph)
+      metrics_view.append(make_metric_query_graph_for_endpoints(endpoints, group, key))
     metrics.append((view_tag, metrics_view))
+  return metrics
+
+def make_metric_query_graph_for_endpoints(endpoints, group, key):
+  graph = {
+    'title' : '%s:%s' % (group, key),
+    'query' : [],
+  }
+  for endpoint in endpoints:
+    graph['query'].append(make_metric_query(endpoint, group, key))
+  return graph
+
+def get_peer_id_endpoint_map(region_servers):
+  peer_id_endpoint_map = {}
+  for region_server in region_servers:
+    endpoint = form_perf_counter_endpoint_name(region_server.task)
+    replicationMetrics = json.loads(region_server.replicationMetrics)
+    for peer_id in replicationMetrics.keys():
+      peer_id_endpoints = peer_id_endpoint_map.setdefault(peer_id, []) 
+      peer_id_endpoints.append(endpoint)
+  return peer_id_endpoint_map
+
+def make_metrics_query_for_replication(peer_id_endpoint_map):
+  metrics = []
+  for peer_id in peer_id_endpoint_map.keys():
+    endpoints = peer_id_endpoint_map[peer_id]
+    peer_graphs = []
+    for key in metric_view_config.REPLICATION_METRICS_VIEW_CONFIG:
+      replication_key = key + '-' + peer_id
+      peer_graphs.append(make_metric_query_graph_for_endpoints(endpoints, "Replication", replication_key))
+    metrics.append((peer_id, peer_graphs))
   return metrics
 
 # metrics is an array of counters, where the counter is formatted as :

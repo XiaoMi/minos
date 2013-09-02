@@ -20,6 +20,7 @@ urlpatterns = patterns(
   url(r'^cluster/(?P<id>\d+)/basic/$', views.show_cluster_basic_board),
   url(r'^cluster/(?P<id>\d+)/table/$', views.show_cluster_table_board),
   url(r'^cluster/(?P<id>\d+)/regionserver/$', views.show_cluster_regionserver_board),
+  url(r'^cluster/(?P<id>\d+)/replication/$', views.show_cluster_replication),
 
   url(r'^job/(?P<id>[^/]+)/$', views.show_job),
   url(r'^task/(?P<id>[^/]+)/$', views.show_task),

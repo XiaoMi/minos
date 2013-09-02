@@ -320,6 +320,11 @@ def get_regionserver(id):
   except RegionServer.DoesNotExist:
     return None
 
+def get_regionservers_with_active_replication_metrics_by_cluster(cluster):
+  return RegionServer.objects.filter(cluster = cluster,
+                                     last_attempt_time__gte = alive_time_threshold(),
+                                     replication_last_attempt_time__gte = alive_time_threshold())
+
 def get_region_by_regionserver_and_encodename(region_server, encodeName):
   try:
     return Region.objects.get(region_server = region_server, encodeName = encodeName)

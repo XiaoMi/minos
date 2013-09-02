@@ -208,6 +208,17 @@ def show_cluster_regionserver_board(request, id):
   }
   return respond(request, 'monitor/hbase_regionserver_board.html', params)
 
+#url: /cluster/$id/replication/
+def show_cluster_replication(request, id):
+  cluster = dbutil.get_cluster(id)
+  region_servers = dbutil.get_regionservers_with_active_replication_metrics_by_cluster(cluster) 
+  peer_id_endpoint_map = metric_helper.get_peer_id_endpoint_map(region_servers)
+  params = {
+    'cluster' : cluster,
+    'replication_metrics' : metric_helper.make_metrics_query_for_replication(peer_id_endpoint_map),
+  }
+  return respond(request, 'monitor/hbase_replication.html', params)
+
 #url: /table/$table_id/
 def show_table(request, id):
   table = dbutil.get_table(id)
