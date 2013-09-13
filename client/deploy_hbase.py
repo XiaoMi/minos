@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 import argparse
+import deploy_hdfs
+import deploy_utils
+import deploy_zookeeper
 import os
 import pwd
 import socket
@@ -9,29 +12,10 @@ import sys
 import tempfile
 import urlparse
 
-import deploy_hdfs
-import deploy_utils
-import deploy_zookeeper
-
 from deploy_utils import Log
 
 # regionserver must start before master
 ALL_JOBS = ["regionserver", "master"]
-
-MASTER_JOB_SCHEMA = {
-    # "param_name": (type, default_value)
-    # type must be in {bool, int, float, str}
-    # if default_value is None, it means it's NOT an optional parameter.
-    "hdfs_root": (str, None),
-}
-
-REGIONSERVER_JOB_SCHEMA = {
-}
-
-HBASE_SERVICE_MAP = {
-    "master": MASTER_JOB_SCHEMA,
-    "regionserver": REGIONSERVER_JOB_SCHEMA,
-}
 
 JOB_MAIN_CLASS = {
     "master": "org.apache.hadoop.hbase.master.HMaster",
@@ -51,110 +35,6 @@ SHELL_COMMAND_INFO = {
   "version": ("org.apache.hadoop.hbase.util.VersionInfo", "print the version"),
 }
 
-def generate_hbase_site_dict(args, host, job_name):
-  zk_job = args.zk_config.jobs["zookeeper"]
-  zk_hosts = ",".join(zk_job.hosts.itervalues())
-
-  master_job = args.hbase_config.jobs["master"]
-  regionserver_job = args.hbase_config.jobs["regionserver"]
-
-  cluster_name = args.hbase_config.cluster.name
-  config_dict = {}
-  config_dict.update(args.hbase_config.cluster.site_xml)
-  config_dict.update(args.hbase_config.jobs[job_name].site_xml)
-  config_dict.update({
-      # config for hbase:
-      "hbase.cluster.name": cluster_name,
-      "hbase.rootdir": "%s/hbase/%s/" % (master_job.hdfs_root, cluster_name),
-      "hbase.cluster.distributed": "true",
-      "hbase.zookeeper.quorum": zk_hosts,
-      "hbase.zookeeper.property.clientPort": zk_job.base_port + 0,
-      "hbase.master.port": master_job.base_port + 0,
-      "hbase.master.info.port": master_job.base_port + 1,
-      "hbase.regionserver.port": regionserver_job.base_port + 0,
-      "hbase.regionserver.info.port": regionserver_job.base_port + 1,
-      "zookeeper.znode.parent": "/hbase/" + cluster_name,
-      "hbase.master.allow.shutdown": "false",
-  })
-
-  if host:
-    supervisor_client = deploy_utils.get_supervisor_client(host,
-        "hbase", args.hbase_config.cluster.name, job_name)
-    config_dict.update({
-        "hbase.tmp.dir": supervisor_client.get_available_data_dirs()[0],
-    })
-
-  if args.hdfs_config.cluster.enable_security:
-    username = args.hbase_config.cluster.kerberos_username
-    config_dict.update({
-        "hbase.regionserver.kerberos.principal": "%s/hadoop@%s" % (
-          args.hbase_config.cluster.kerberos_username or "hbase",
-          args.hbase_config.cluster.kerberos_realm),
-        "hbase.regionserver.keytab.file": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-        "hbase.master.kerberos.principal": "%s/hadoop@%s" % (
-          args.hbase_config.cluster.kerberos_username or "hbase",
-          args.hbase_config.cluster.kerberos_realm),
-        "hbase.master.keytab.file": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-    })
-
-  if args.zk_config.cluster.enable_security:
-    config_dict.update({
-        "hbase.zookeeper.property.authProvider.1":
-          "org.apache.zookeeper.server.auth.SASLAuthenticationProvider",
-        "hbase.zookeeper.property.kerberos.removeHostFromPrincipal": "true",
-        "hbase.zookeeper.property.kerberos.removeRealmFromPrincipal": "true",
-    })
-
-  if args.hbase_config.cluster.enable_security:
-    # config security
-    config_dict.update({
-        "hbase.security.authorization": "true",
-        "hbase.security.authentication": "kerberos",
-        "hbase.rpc.engine": "org.apache.hadoop.hbase.ipc.SecureRpcEngine",
-        "hbase.coprocessor.region.classes":
-          "org.apache.hadoop.hbase.security.token.TokenProvider",
-    })
-
-  if args.hbase_config.cluster.enable_acl:
-    # config acl
-    config_dict.update({
-        "hbase.coprocessor.master.classes":
-          "org.apache.hadoop.hbase.security.access.AccessController",
-        "hbase.coprocessor.region.classes":
-          ("org.apache.hadoop.hbase.security.token.TokenProvider," +
-           "org.apache.hadoop.hbase.security.access.AccessController"),
-        "hbase.superuser": "hbase_admin",
-    })
-
-  return config_dict
-
-def generate_hbase_site_xml(args, host, job_name):
-  config_dict = generate_hbase_site_dict(args, host, job_name)
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_zk_jaas_config(args, host, job_name):
-  if not args.hbase_config.cluster.enable_security:
-    return ""
-
-  username = args.hbase_config.cluster.kerberos_username
-  header_line = "com.sun.security.auth.module.Krb5LoginModule required"
-  config_dict = {
-    "useKeyTab": "true",
-    "useTicketCache": "false",
-    "keyTab": "\"%s/%s.keytab\"" % (deploy_utils.HADOOP_CONF_PATH, username),
-    "principal": "\"%s/hadoop\"" % (
-        args.hbase_config.cluster.kerberos_username or "hbase"),
-    "debug": "true",
-    "storeKey": "true",
-  }
-
-  return "Client {\n  %s\n%s;\n};" % (header_line,
-      "\n".join(["  %s=%s" % (key, value)
-        for (key, value) in config_dict.iteritems()]))
-
 def generate_metrics_config(args, host, job_name):
   job = args.hbase_config.jobs[job_name]
 
@@ -166,7 +46,7 @@ def generate_metrics_config(args, host, job_name):
     ganglia_switch = ""
   config_dict = {
       "job_name": job_name,
-      "period": job.metrics_period,
+      "period": 10,  
       "data_dir": supervisor_client.get_log_dir(),
       "ganglia_address": args.hbase_config.cluster.ganglia_address,
       "ganglia_switch": ganglia_switch,
@@ -176,17 +56,32 @@ def generate_metrics_config(args, host, job_name):
   template = deploy_utils.Template(open(local_path, "r").read())
   return template.substitute(config_dict)
 
+def generate_zk_jaas_config(args):
+  if not deploy_utils.is_security_enabled(args):
+    return ""
+
+  config_dict = args.hbase_config.configuration.generated_files["jaas.conf"]
+
+  for key, value in config_dict.items()[1:]:
+    if value != "true" and value != "false" and value.find("\"") == -1:
+      config_dict[key] = "\"" + value + "\""
+
+  header_line = config_dict["headerLine"]
+  return "Client {\n  %s\n%s;\n};" % (header_line,
+    "\n".join(["  %s=%s" % (key, value)
+      for (key, value) in config_dict.iteritems() if key != config_dict.keys()[0]]))
+
+
 def generate_configs(args, host, job_name):
-  job = args.hbase_config.jobs[job_name]
-  core_site_xml = deploy_hdfs.generate_core_site_xml(args, job_name, "hbase",
-      args.hdfs_config.cluster.enable_security, job)
-  hdfs_site_xml = deploy_hdfs.generate_hdfs_site_xml_client(args)
-  hbase_site_xml = generate_hbase_site_xml(args, host, job_name)
+  core_site_xml = deploy_utils.generate_site_xml(args,
+    args.hbase_config.configuration.generated_files["core-site.xml"])
+  hdfs_site_xml = deploy_utils.generate_site_xml(args,
+    args.hbase_config.configuration.generated_files["hdfs-site.xml"])
+  hbase_site_xml = deploy_utils.generate_site_xml(args,
+    args.hbase_config.configuration.generated_files["hbase-site.xml"])
   hadoop_metrics_properties = generate_metrics_config(args, host, job_name)
-  zk_jaas_conf = generate_zk_jaas_config(args, host, job_name)
-  configuration_xsl = open("%s/configuration.xsl" % deploy_utils.get_template_dir()).read()
-  log4j_xml = open("%s/hbase/log4j.xml" % deploy_utils.get_template_dir()).read()
-  krb5_conf = open("%s/krb5-hadoop.conf" % deploy_utils.get_config_dir()).read()
+  zk_jaas_conf = generate_zk_jaas_config(args)
+  hbase_raw_files = args.hbase_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -194,9 +89,9 @@ def generate_configs(args, host, job_name):
     "hbase-site.xml": hbase_site_xml,
     "hadoop-metrics.properties": hadoop_metrics_properties,
     "jaas.conf": zk_jaas_conf,
-    "configuration.xsl": configuration_xsl,
-    "log4j.xml": log4j_xml,
-    "krb5.conf": krb5_conf,
+    "configuration.xsl": hbase_raw_files["configuration.xsl"],
+    "log4j.xml": hbase_raw_files["log4j.xml"],
+    "krb5.conf": hbase_raw_files["krb5.conf"],
   }
   return config_files
 
@@ -279,7 +174,7 @@ def generate_run_scripts_params(args, host, job_name):
           get_job_specific_params(args, job_name),
   }
 
-  if args.hbase_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     jaas_path = "%s/jaas.conf" % supervisor_client.get_run_dir()
     script_dict["params"] += "-Djava.security.auth.login.config=%s " % jaas_path
     boot_class_path = ("$package_dir/lib/hadoop-security-%s.jar" %
@@ -290,27 +185,11 @@ def generate_run_scripts_params(args, host, job_name):
   return script_dict
 
 def get_hbase_service_config(args):
-  args.hbase_config = deploy_utils.get_service_config_full(
-      args, HBASE_SERVICE_MAP)
+  args.hbase_config = deploy_utils.get_service_config(args)
   if not args.hbase_config.cluster.zk_cluster:
     Log.print_critical(
         "hdfs cluster must depends on a zookeeper clusters: %s" %
         args.hbase_config.cluster.name)
-
-  hdfs_root = args.hbase_config.jobs["master"].hdfs_root
-  url = urlparse.urlparse(hdfs_root)
-  if url.scheme != "hdfs":
-    Log.print_critical(
-        "Only hdfs supported as data root: %s" % hdfs_root)
-  args.hbase_config.jobs["master"].hdfs_root = hdfs_root.rstrip("/")
-
-  hdfs_args = argparse.Namespace()
-  hdfs_args.root = deploy_utils.get_root_dir("hdfs")
-  hdfs_args.service = "hdfs"
-  hdfs_args.cluster = url.netloc
-
-  args.hdfs_config = deploy_utils.get_service_config(
-      hdfs_args, deploy_hdfs.HDFS_SERVICE_MAP)
 
 def generate_start_script(args, host, job_name):
   script_params = generate_run_scripts_params(args, host, job_name)
@@ -424,10 +303,9 @@ def run_shell(args):
   if not main_class:
     return
 
-  core_site_dict = deploy_hdfs.generate_core_site_dict(args,
-      "namenode", "hdfs", args.hdfs_config.cluster.enable_security)
-  hdfs_site_dict = deploy_hdfs.generate_hdfs_site_dict_client(args)
-  hbase_site_dict = generate_hbase_site_dict(args, "", "master")
+  core_site_dict = args.hbase_config.configuration.generated_files["core-site.xml"]
+  hdfs_site_dict = args.hbase_config.configuration.generated_files["hdfs-site.xml"]
+  hbase_site_dict = args.hbase_config.configuration.generated_files["hbase-site.xml"]
 
   hbase_opts = list()
   for key, value in core_site_dict.iteritems():
@@ -440,13 +318,12 @@ def run_shell(args):
     hbase_opts.append("-D%s%s=%s" % (deploy_utils.HADOOP_PROPERTY_PREFIX,
           key, value))
 
-  if args.hbase_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     hbase_opts.append("-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
         deploy_utils.get_config_dir())
 
     (jaas_fd, jaas_file) = tempfile.mkstemp()
-    os.write(jaas_fd, deploy_zookeeper.generate_client_jaas_config(args,
-          deploy_utils.get_user_principal_from_ticket_cache()))
+    os.write(jaas_fd, deploy_zookeeper.generate_client_jaas_config(args))
     os.close(jaas_fd)
     hbase_opts.append("-Djava.security.auth.login.config=%s" % jaas_file)
 
@@ -478,19 +355,20 @@ def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/conf" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/hbase-site.xml" % config_path,
-      generate_hbase_site_xml(args, master_host, "master"))
+      deploy_utils.generate_site_xml(args,
+        args.hbase_config.configuration.generated_files["hbase-site.xml"]))
   deploy_utils.write_file("%s/hadoop-metrics.properties" % config_path,
       generate_metrics_config(args, master_host, "master"))
   deploy_utils.write_file("%s/core-site.xml" % config_path,
-      deploy_hdfs.generate_core_site_xml(args, "namenode", "hbase",
-        args.hbase_config.cluster.enable_security))
+      deploy_utils.generate_site_xml(args,
+        args.hbase_config.configuration.generated_files["core-site.xml"]))
   deploy_utils.write_file("%s/hdfs-site.xml" % config_path,
-      deploy_hdfs.generate_hdfs_site_xml_client(args))
+      deploy_utils.generate_site_xml(args,
+        args.hbase_config.configuration.generated_files["hdfs-site.xml"]))
   deploy_utils.write_file("%s/jaas.conf" % config_path,
-      deploy_zookeeper.generate_client_jaas_config(args,
-        deploy_utils.get_user_principal_from_ticket_cache()))
+      deploy_zookeeper.generate_client_jaas_config(args))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
-      open('%s/krb5-hadoop.conf' % deploy_utils.get_config_dir()).read())
+      args.hbase_config.configuration.raw_files["krb5.conf"])
   update_hbase_env_sh(args, artifact, version)
 
 def pack(args):

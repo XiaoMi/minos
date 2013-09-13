@@ -1,40 +1,16 @@
 #!/usr/bin/env python
 
 import argparse
+import deploy_hdfs
+import deploy_utils
 import subprocess
 import sys
 import urlparse
-
-import deploy_utils
-import deploy_hdfs
 
 from deploy_utils import Log
 
 
 ALL_JOBS = ["resourcemanager", "nodemanager", "historyserver", "proxyserver"]
-
-RESOURCEMANAGER_JOB_SCHEMA = {
-  # "param_name": (type, default_value)
-  # type must be in {bool, int, float, str}
-  # if default_value is None, it means it's NOT an optional parameter.
-  "hdfs_root": (str, None),
-}
-
-NODEMANAGER_JOB_SCHEMA = {
-}
-
-HISTORYSERVER_JOB_SCHEMA = {
-}
-
-PROXYSERVER_JOB_SCHEMA = {
-}
-
-YARN_SERVICE_MAP = {
-  "resourcemanager": RESOURCEMANAGER_JOB_SCHEMA,
-  "nodemanager": NODEMANAGER_JOB_SCHEMA,
-  "historyserver": HISTORYSERVER_JOB_SCHEMA,
-  "proxyserver": PROXYSERVER_JOB_SCHEMA,
-}
 
 JOB_MAIN_CLASS = {
   "resourcemanager":
@@ -56,160 +32,11 @@ SHELL_COMMAND_INFO = {
 }
 
 def get_yarn_service_config(args):
-  args.yarn_config = deploy_utils.get_service_config_full(
-      args, YARN_SERVICE_MAP)
+  args.yarn_config = deploy_utils.get_service_config(args)
   if not args.yarn_config.cluster.zk_cluster:
     Log.print_critical(
         "yarn cluster must depends on a zookeeper clusters: %s" %
         args.yarn_config.cluster.name)
-
-  hdfs_root = args.yarn_config.jobs["resourcemanager"].hdfs_root
-  url = urlparse.urlparse(hdfs_root)
-  if url.scheme != "hdfs":
-    Log.print_critical(
-        "Only hdfs supported as data root: %s" % hdfs_root)
-  args.yarn_config.jobs["resourcemanager"].hdfs_root = hdfs_root.rstrip("/")
-
-  hdfs_args = argparse.Namespace()
-  hdfs_args.root = deploy_utils.get_root_dir("hdfs")
-  hdfs_args.service = "hdfs"
-  hdfs_args.cluster = url.netloc
-
-  args.hdfs_config = deploy_utils.get_service_config(
-      hdfs_args, deploy_hdfs.HDFS_SERVICE_MAP)
-
-def generate_mapred_site_dict(args, host, job_name):
-  zk_job = args.zk_config.jobs["zookeeper"]
-  zk_hosts = ",".join(zk_job.hosts.itervalues())
-
-  resourcemanager_job = args.yarn_config.jobs["resourcemanager"]
-  nodemanager_job = args.yarn_config.jobs["nodemanager"]
-
-  cluster_name = args.yarn_config.cluster.name
-  config_dict = {
-    "mapreduce.framework.name": "yarn",
-    "mapreduce.jobhistory.address": "0.0.0.0:%d" % (
-        args.yarn_config.jobs["historyserver"].base_port + 0),
-    "mapreduce.jobhistory.webapp.address": "0.0.0.0:%d" % (
-        args.yarn_config.jobs["historyserver"].base_port + 1),
-    "yarn.app.mapreduce.am.staging-dir": "/tmp/hadoop-yarn/staging",
-    "mapreduce.shuffle.port": args.yarn_config.jobs["nodemanager"].base_port + 8,
-  }
-
-  if host:
-    supervisor_client = deploy_utils.get_supervisor_client(host,
-        "yarn", args.yarn_config.cluster.name, job_name)
-    package_dir = supervisor_client.get_current_package_dir()
-    config_dict.update({
-        "mapreduce.admin.user.env":
-          "LD_LIBRARY_PATH=%s/lib/native:/usr/lib" % package_dir,
-    })
-
-  username = args.yarn_config.cluster.kerberos_username
-  if args.yarn_config.cluster.enable_security:
-    config_dict.update({
-        "mapreduce.jobhistory.keytab": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-        "mapreduce.jobhistory.principal": "%s/hadoop@%s" % (
-          args.yarn_config.cluster.kerberos_username or "yarn",
-          args.yarn_config.cluster.kerberos_realm),
-    })
-  return config_dict
-
-def generate_mapred_site_xml(args, host, job_name):
-  config_dict = generate_mapred_site_dict(args, host, job_name)
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_yarn_site_dict(args, host, job_name):
-  zk_job = args.zk_config.jobs["zookeeper"]
-  zk_hosts = ",".join(zk_job.hosts.itervalues())
-
-  resourcemanager_job = args.yarn_config.jobs["resourcemanager"]
-  nodemanager_job = args.yarn_config.jobs["nodemanager"]
-  proxyserver_job = args.yarn_config.jobs["proxyserver"]
-
-  supervisor_client = deploy_utils.get_supervisor_client(host,
-      "yarn", args.yarn_config.cluster.name, job_name)
-
-  cluster_name = args.yarn_config.cluster.name
-  package_path = supervisor_client.get_current_package_dir()
-  class_path_root = "%s/share/hadoop" % package_path
-
-  config_dict = {}
-  config_dict.update(args.yarn_config.cluster.site_xml)
-  config_dict.update({
-    # global config
-    "yarn.log-aggregation-enable": "true",
-
-    # config resouremanager
-    "yarn.resourcemanager.address": "%s:%d" % (resourcemanager_job.hosts[0],
-        resourcemanager_job.base_port + 0),
-    "yarn.resourcemanager.webapp.address": "%s:%d" % (
-        resourcemanager_job.hosts[0], resourcemanager_job.base_port + 1),
-    "yarn.resourcemanager.scheduler.address": "%s:%d" % (
-        resourcemanager_job.hosts[0], resourcemanager_job.base_port + 2),
-    "yarn.resourcemanager.resource-tracker.address": "%s:%d" % (
-        resourcemanager_job.hosts[0], resourcemanager_job.base_port + 3),
-    "yarn.resourcemanager.admin.address": "%s:%d" % (
-        resourcemanager_job.hosts[0], resourcemanager_job.base_port + 4),
-
-    # config nodemanager
-    "yarn.nodemanager.aux-services": "mapreduce.shuffle",
-    "yarn.nodemanager.aux-services.mapreduce.shuffle.class":
-      "org.apache.hadoop.mapred.ShuffleHandler",
-    "yarn.nodemanager.remote-app-log-dir": "/var/log/hadoop-yarn/apps",
-    "yarn.nodemanager.address": "0.0.0.0:%d" % (
-        nodemanager_job.base_port + 0),
-    "yarn.nodemanager.webapp.address": "0.0.0.0:%d" % (
-        nodemanager_job.base_port + 1),
-    "yarn.nodemanager.localizer.address": "0.0.0.0:%d" % (
-        nodemanager_job.base_port + 2),
-    "yarn.nodemanager.vmem-pmem-ratio": 10,
-    "yarn.nodemanager.log.retain-seconds": 86400,
-
-    # config proxy server
-    "yarn.web-proxy.address": "%s:%d" % (proxyserver_job.hosts[0],
-        proxyserver_job.base_port + 1),
-  })
-
-  if job_name == "nodemanager":
-    data_dirs = ",".join(supervisor_client.get_available_data_dirs())
-    config_dict.update({
-      "yarn.nodemanager.local-dirs": data_dirs,
-      "yarn.nodemanager.log-dirs": supervisor_client.get_log_dir(),
-    })
-  elif job_name == "resourcemanager":
-    run_dir = supervisor_client.get_run_dir()
-    config_dict.update({
-      "yarn.resourcemanager.nodes.exclude-path": "%s/excludes" % run_dir,
-    })
-
-  username = args.yarn_config.cluster.kerberos_username
-  if args.yarn_config.cluster.enable_security:
-    config_dict.update({
-        "yarn.resourcemanager.keytab": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-        "yarn.resourcemanager.principal": "%s/hadoop@%s" % (
-          args.yarn_config.cluster.kerberos_username or "yarn",
-          args.yarn_config.cluster.kerberos_realm),
-        "yarn.nodemanager.keytab": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-        "yarn.nodemanager.principal": "%s/hadoop@%s" % (
-          args.yarn_config.cluster.kerberos_username or "yarn",
-          args.yarn_config.cluster.kerberos_realm),
-        "yarn.web-proxy.keytab": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-        "yarn.web-proxy.principal": "%s/hadoop@%s" % (
-          args.yarn_config.cluster.kerberos_username or "yarn",
-          args.yarn_config.cluster.kerberos_realm),
-    })
-  return config_dict
-
-def generate_yarn_site_xml(args, host, job_name):
-  config_dict = generate_yarn_site_dict(args, host, job_name)
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
 
 def generate_metrics_config(args, host, job_name):
   job = args.yarn_config.jobs[job_name]
@@ -221,7 +48,7 @@ def generate_metrics_config(args, host, job_name):
     ganglia_switch = ""
   config_dict = {
       "job_name": job_name,
-      "period": job.metrics_period,
+      "period": 10, 
       "data_dir": supervisor_client.get_log_dir(),
       "ganglia_address": args.yarn_config.cluster.ganglia_address,
       "ganglia_switch": ganglia_switch,
@@ -232,17 +59,16 @@ def generate_metrics_config(args, host, job_name):
   return template.substitute(config_dict)
 
 def generate_configs(args, host, job_name):
-  job = args.yarn_config.jobs[job_name]
-  core_site_xml = deploy_hdfs.generate_core_site_xml(args, job_name,
-      "yarn", args.yarn_config.cluster.enable_security, job)
-  hdfs_site_xml = deploy_hdfs.generate_hdfs_site_xml_client(args)
-  mapred_site_xml = generate_mapred_site_xml(args, host, job_name)
-  yarn_site_xml = generate_yarn_site_xml(args, host, job_name)
+  core_site_xml = deploy_utils.generate_site_xml(args,
+    args.yarn_config.configuration.generated_files["core-site.xml"])
+  hdfs_site_xml = deploy_utils.generate_site_xml(args,
+    args.yarn_config.configuration.generated_files["hdfs-site.xml"])
+  mapred_site_xml = deploy_utils.generate_site_xml(args,
+    args.yarn_config.configuration.generated_files["mapred-site.xml"])
+  yarn_site_xml = deploy_utils.generate_site_xml(args,
+    args.yarn_config.configuration.generated_files["yarn-site.xml"])
   hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
-  configuration_xsl = open("%s/configuration.xsl" % deploy_utils.get_template_dir()).read()
-  log4j_xml = open("%s/yarn/log4j.xml" % deploy_utils.get_template_dir()).read()
-  krb5_conf = open("%s/krb5-hadoop.conf" % deploy_utils.get_config_dir()).read()
-  excludes = str()
+  yarn_raw_files = args.yarn_config.configuration.raw_files  
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -250,10 +76,10 @@ def generate_configs(args, host, job_name):
     "mapred-site.xml": mapred_site_xml,
     "yarn-site.xml": yarn_site_xml,
     "hadoop-metrics2.properties": hadoop_metrics2_properties,
-    "configuration.xsl": configuration_xsl,
-    "log4j.xml": log4j_xml,
-    "krb5.conf": krb5_conf,
-    "excludes": excludes,
+    "configuration.xsl": yarn_raw_files["configuration.xsl"],
+    "log4j.xml": yarn_raw_files["log4j.xml"],
+    "krb5.conf": yarn_raw_files["krb5.conf"],
+    "excludes": yarn_raw_files["excludes"],
   }
   return config_files
 
@@ -311,7 +137,7 @@ def generate_run_scripts_params(args, host, job_name):
           get_job_specific_params(args, job_name)
   }
 
-  if args.yarn_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     class_path_root = "$package_dir/share/hadoop"
     boot_class_path = ("%s/common/lib/hadoop-security-%s.jar" % (
           class_path_root, args.hdfs_config.cluster.version))
@@ -352,7 +178,6 @@ def bootstrap_job(args, host, job_name, cleanup_token):
 
 def bootstrap(args):
   get_yarn_service_config(args)
-
   cleanup_token = deploy_utils.confirm_bootstrap("yarn", args.yarn_config)
 
   for job_name in args.job or ALL_JOBS:
@@ -433,14 +258,11 @@ def run_shell(args):
       args, SHELL_COMMAND_INFO)
   if not main_class:
     return
-
-  core_site_dict = deploy_hdfs.generate_core_site_dict(args,
-      "namenode", "hdfs", args.hdfs_config.cluster.enable_security)
-  hdfs_site_dict = deploy_hdfs.generate_hdfs_site_dict_client(args)
-  mapred_site_dict = generate_mapred_site_dict(args,
-      args.yarn_config.jobs["resourcemanager"].hosts[0], "resourcemanager")
-  yarn_site_dict = generate_yarn_site_dict(args,
-      args.yarn_config.jobs["resourcemanager"].hosts[0], "resourcemanager")
+  
+  core_site_dict = args.yarn_config.configuration.generated_files["core-site.xml"]
+  hdfs_site_dict = args.yarn_config.configuration.generated_files["hdfs-site.xml"]
+  mapred_site_dict = args.yarn_config.configuration.generated_files["mapred-site.xml"]
+  yarn_site_dict = args.yarn_config.configuration.generated_files["yarn-site.xml"]
 
   hadoop_opts = list()
   for key, value in core_site_dict.iteritems():
@@ -456,7 +278,7 @@ def run_shell(args):
     hadoop_opts.append("-D%s%s=%s" % (deploy_utils.HADOOP_PROPERTY_PREFIX,
           key, value))
 
-  if args.yarn_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     hadoop_opts.append(
         "-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
         deploy_utils.get_config_dir())
@@ -479,15 +301,13 @@ def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/etc/hadoop" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/mapred-site.xml" % config_path,
-      generate_mapred_site_xml(args,
-        args.yarn_config.jobs["nodemanager"].hosts[0],
-        "nodemanager"))
+      deploy_utils.generate_site_xml(args, 
+        args.yarn_config.configuration.generated_files["mapred-site.xml"]))
   deploy_utils.write_file("%s/yarn-site.xml" % config_path,
-      generate_yarn_site_xml(args,
-        args.yarn_config.jobs["nodemanager"].hosts[0],
-        "nodemanager"))
+      deploy_utils.generate_site_xml(args, 
+        args.yarn_config.configuration.generated_files["yarn-site.xml"]))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
-      open('%s/krb5-hadoop.conf' % deploy_utils.get_config_dir()).read())
+      args.yarn_config.configuration.raw_files["krb5.conf"])
   deploy_hdfs.update_hadoop_env_sh(args, artifact, version, "YARN_OPTS")
 
 def pack(args):

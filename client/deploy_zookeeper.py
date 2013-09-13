@@ -12,111 +12,54 @@ from deploy_utils import Log
 
 MYID_FILE = "myid"
 
-ZOOKEEPER_JOB_SCHEMA = {
-    # "param_name": (type, default_value)
-    # type must be in {bool, int, float, str}
-    # if default_value is None, it means it's NOT an optional parameter.
-    "tick_time": (int, 2000),
-    "init_limit": (int, 10),
-    "sync_limit": (int, 5),
-    "autopurge_snap_retain_count": (int, 3),
-    "autopurge_purge_interval": (int, 1),
-    "fsync_warning_threashold_ms": (int, 1000),
-    "pre_alloc_size": (int, 65536),
-}
-
-ZOOKEEPER_SERVICE_MAP = {
-    "zookeeper": ZOOKEEPER_JOB_SCHEMA,
-}
-
 SHELL_COMMAND_INFO = {
   "zkcli": ("org.apache.zookeeper.ZooKeeperMain",
       "run the zookeeper client shell"),
 }
 
 def generate_zookeeper_config(args):
-  job = args.zk_config.jobs["zookeeper"]
-  server_list = ""
-  for id, host in job.hosts.iteritems():
-    server_list += ("server.%d=%s:%d:%d\n" %
-                    (id, host, 
-                     job.base_port + 2, job.base_port + 3))
-
-  supervisor_client = deploy_utils.get_supervisor_client(
-      args.zk_config.jobs["zookeeper"].hosts[0],
-      "zookeeper", args.zk_config.cluster.name, "zookeeper")
-
-  config_dict = {
-      "tick_time": job.tick_time,
-      "init_limit": job.init_limit,
-      "sync_limit": job.sync_limit,
-      "data_dir": supervisor_client.get_available_data_dirs()[0],
-      "data_log_dir": supervisor_client.get_available_data_dirs()[0],
-      "client_port": job.base_port + 0,
-      "server_list": server_list,
-      "autopurge_snap_retain_count": job.autopurge_snap_retain_count,
-      "autopurge_purge_interval": job.autopurge_purge_interval,
-      "fsync_warning_threashold_ms": job.fsync_warning_threashold_ms,
-      "pre_alloc_size": job.pre_alloc_size,
-  }
-
-  security_switch = "# "
-  if args.zk_config.cluster.enable_security:
-    security_switch = ""
-  config_dict.update({
-      "security_switch": security_switch,
-      "auth_provider_1":
-        "org.apache.zookeeper.server.auth.SASLAuthenticationProvider",
-      "jaas_login_renew": 3600000,
-  })
-
+  config_dict = args.zookeeper_config.configuration.generated_files["zookeeper.cfg"]
   local_path = "%s/zookeeper.cfg.tmpl" % deploy_utils.get_template_dir()
   template = deploy_utils.Template(open(local_path, "r").read())
   return template.substitute(config_dict)
 
-def generate_jaas_config(args, host):
-  if not args.zk_config.cluster.enable_security:
+def generate_jaas_config(args):
+  if not deploy_utils.is_security_enabled(args):
     return ""
 
-  header_line = "com.sun.security.auth.module.Krb5LoginModule required"
-  config_dict = {
-    "useKeyTab": "true",
-    "keyTab": "\"%s/zookeeper.keytab\"" % deploy_utils.HADOOP_CONF_PATH,
-    "storeKey": "true",
-    "useTicketCache": "false",
-    "principal": "\"zookeeper/hadoop@%s\"" % (
-        args.zk_config.cluster.kerberos_realm),
-  }
+  config_dict = args.zookeeper_config.configuration.generated_files["jaas-server.conf"]
 
+  for key, value in config_dict.items()[1:]:
+    if value != "true" and value != "false" and value.find("\"") == -1:
+      config_dict[key] = "\"" + value + "\""
+
+  header_line = config_dict["headerLine"]
   return "Server {\n  %s\n%s;\n};" % (header_line,
       "\n".join(["  %s=%s" % (key, value)
-        for (key, value) in config_dict.iteritems()]))
+        for (key, value) in config_dict.iteritems() if key != config_dict.keys()[0]]))
 
-def generate_client_jaas_config(args, user_principal):
-  if not args.zk_config.cluster.enable_security:
+def generate_client_jaas_config(args):
+  if not deploy_utils.is_security_enabled(args):
     return ""
 
-  header_line = "com.sun.security.auth.module.Krb5LoginModule required"
-  config_dict = {
-    "useKeyTab": "false",
-    "principal": "\"%s\"" % user_principal,
-    "useTicketCache": "true",
-    "debug": "true",
-  }
+  config_dict = args.zookeeper_config.configuration.generated_files["jaas-client.conf"]
 
+  for key, value in config_dict.items()[1:]:
+    if value != "true" and value != "false" and value.find("\"") == -1:
+      config_dict[key] = "\"" + value + "\""
+
+  header_line = config_dict["headerLine"]
   return "Client {\n  %s\n%s;\n};" % (header_line,
       "\n".join(["  %s=%s" % (key, value)
-        for (key, value) in config_dict.iteritems()]))
+        for (key, value) in config_dict.iteritems() if key != config_dict.keys()[0]]))
 
-def generate_run_scripts(args, host, job_name):
+def generate_run_scripts(args):
   config_files = dict()
 
   zookeeper_cfg = generate_zookeeper_config(args)
-  jaas_conf = generate_jaas_config(args, host)
-  log4j_xml = open(
-      "%s/zookeeper/log4j.xml" % deploy_utils.get_template_dir()).read()
-  krb5_conf = open(
-      "%s/krb5-hadoop.conf" % deploy_utils.get_config_dir()).read()
+  jaas_conf = generate_jaas_config(args)
+  log4j_xml = args.zookeeper_config.configuration.raw_files["log4j.xml"]
+  krb5_conf = args.zookeeper_config.configuration.raw_files["krb5.conf"]
 
   config_files.update({
       "zookeeper.cfg": zookeeper_cfg,
@@ -128,7 +71,7 @@ def generate_run_scripts(args, host, job_name):
 
 def generate_bootstrap_script(args, host, job_name, host_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-    "zookeeper", args.zk_config.cluster.name, job_name)
+    "zookeeper", args.zookeeper_config.cluster.name, job_name)
   data_dir = supervisor_client.get_available_data_dirs()[0]
   myid_file = "%s/%s" % (data_dir, MYID_FILE)
 
@@ -142,15 +85,15 @@ def generate_bootstrap_script(args, host, job_name, host_id):
 
 def generate_start_script(args, host, job_name):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "zookeeper", args.zk_config.cluster.name, job_name)
+      "zookeeper", args.zookeeper_config.cluster.name, job_name)
   run_dir = supervisor_client.get_run_dir()
 
-  artifact_and_version = "zookeeper-" + args.zk_config.cluster.version
+  artifact_and_version = "zookeeper-" + args.zookeeper_config.cluster.version
   component_dir = "$package_dir"
   # must include both [dir]/ and [dir]/* as [dir]/* only import all jars under
   # this dir but we also need access the webapps under this dir.
   jar_dirs = "%s/:%s/lib/*:%s/*" % (component_dir, component_dir, component_dir)
-  job = args.zk_config.jobs["zookeeper"]
+  job = args.zookeeper_config.jobs["zookeeper"]
 
   script_dict = {
       "artifact": artifact_and_version,
@@ -176,12 +119,12 @@ def generate_start_script(args, host, job_name):
           '-Xloggc:$run_dir/stdout/zk_gc_${start_time}.log ' +
           '-Djava.net.preferIPv4Stack=true ' +
           '-Dzookeeper.log.dir=$log_dir ' +
-          '-Dzookeeper.cluster=%s ' % args.zk_config.cluster.name +
+          '-Dzookeeper.cluster=%s ' % args.zookeeper_config.cluster.name +
           '-Dzookeeper.tracelog.dir=$log_dir ',
   }
 
   # Config security
-  if args.zk_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     script_dict["params"] += '-Dzookeeper.superUser=zk_admin '
     script_dict["params"] += '-Djava.security.auth.login.config=$run_dir/jaas.conf '
     script_dict["params"] += '-Djava.security.krb5.conf=$run_dir/krb5.conf '
@@ -194,30 +137,30 @@ def generate_start_script(args, host, job_name):
       script_dict)
 
 def get_zk_service_config(args):
-  args.zk_config = deploy_utils.get_service_config(args, ZOOKEEPER_SERVICE_MAP)
-  if args.zk_config.cluster.zk_cluster:
+  args.zookeeper_config = deploy_utils.get_service_config(args)
+  if args.zookeeper_config.cluster.zk_cluster:
     Log.print_critical(
         "zookeeper cluster can't depends on other clusters: %s" %
-        args.zk_config.cluster.name)
+        args.zookeeper_config.cluster.name)
 
 def install(args):
   get_zk_service_config(args)
-  deploy_utils.install_service(args, "zookeeper", args.zk_config, "zookeeper")
+  deploy_utils.install_service(args, "zookeeper", args.zookeeper_config, "zookeeper")
 
 def cleanup(args):
   get_zk_service_config(args)
 
   cleanup_token = deploy_utils.confirm_cleanup(args,
-      "zookeeper", args.zk_config)
+      "zookeeper", args.zookeeper_config)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   for id, host in hosts.iteritems():
-    deploy_utils.cleanup_job("zookeeper", args.zk_config,
+    deploy_utils.cleanup_job("zookeeper", args.zookeeper_config,
         hosts[id], "zookeeper", cleanup_token)
 
 def bootstrap_job(args, host, job_name, host_id, cleanup_token):
   bootstrap_script = generate_bootstrap_script(args, host, job_name, host_id)
-  deploy_utils.bootstrap_job(args, "zookeeper", "zookeeper", args.zk_config,
+  deploy_utils.bootstrap_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
       host, job_name, cleanup_token, '0', bootstrap_script)
 
   # start job after bootstrapping.
@@ -226,17 +169,17 @@ def bootstrap_job(args, host, job_name, host_id, cleanup_token):
 def bootstrap(args):
   get_zk_service_config(args)
 
-  cleanup_token = deploy_utils.confirm_bootstrap("zookeeper", args.zk_config)
+  cleanup_token = deploy_utils.confirm_bootstrap("zookeeper", args.zookeeper_config)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   for id in args.task or hosts.iterkeys():
     bootstrap_job(args, hosts[id], "zookeeper", id, cleanup_token)
 
 def start_job(args, host, job_name):
-  config_files = generate_run_scripts(args, host, job_name)
+  config_files = generate_run_scripts(args)
   start_script = generate_start_script(args, host, job_name)
   http_url = ''
-  deploy_utils.start_job(args, "zookeeper", "zookeeper", args.zk_config,
+  deploy_utils.start_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
       host, job_name, start_script, http_url, **config_files)
 
 def start(args):
@@ -244,14 +187,14 @@ def start(args):
     deploy_utils.confirm_start(args)
   get_zk_service_config(args)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   if args.host is not None:
     args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
     start_job(args, hosts[id], "zookeeper")
 
 def stop_job(args, host, job_name):
-  deploy_utils.stop_job("zookeeper", args.zk_config,
+  deploy_utils.stop_job("zookeeper", args.zookeeper_config,
       host, job_name)
 
 def stop(args):
@@ -259,7 +202,7 @@ def stop(args):
     deploy_utils.confirm_stop(args)
   get_zk_service_config(args)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   if args.host is not None:
     args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
@@ -270,7 +213,7 @@ def restart(args):
     deploy_utils.confirm_restart(args)
   get_zk_service_config(args)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   if args.host is not None:
     args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
@@ -278,17 +221,17 @@ def restart(args):
 
   for id in args.task or hosts.iterkeys():
     deploy_utils.wait_for_job_stopping("zookeeper",
-        args.zk_config.cluster.name, "zookeeper", hosts[id])
+        args.zookeeper_config.cluster.name, "zookeeper", hosts[id])
     start_job(args, hosts[id], "zookeeper")
 
 def show(args):
   get_zk_service_config(args)
 
-  hosts = args.zk_config.jobs["zookeeper"].hosts
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
   if args.host is not None:
     args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
   for id in args.task or hosts.iterkeys():
-    deploy_utils.show_job("zookeeper", args.zk_config,
+    deploy_utils.show_job("zookeeper", args.zookeeper_config,
         hosts[id], "zookeeper")
 
 def run_shell(args):
@@ -299,25 +242,24 @@ def run_shell(args):
   if not main_class:
     return
 
-  client_jaas = generate_client_jaas_config(args,
-      deploy_utils.get_user_principal_from_ticket_cache())
+  client_jaas = generate_client_jaas_config(args)
   jaas_fd, jaas_file = tempfile.mkstemp(suffix='zookeeper')
   os.write(jaas_fd, client_jaas)
   os.close(jaas_fd)
   zookeeper_opts = list()
-  if args.zk_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     zookeeper_opts.append("-Djava.security.auth.login.config=%s" % jaas_file)
     zookeeper_opts.append(
-        "-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
-        deploy_utils.get_config_dir())
+      "-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
+      deploy_utils.get_config_dir())
 
   package_root = deploy_utils.get_zookeeper_package_root(
-      args.zk_config.cluster.version)
+      args.zookeeper_config.cluster.version)
   class_path = "%s/:%s/lib/*:%s/*" % (package_root, package_root, package_root)
 
   zk_address = "%s:%d" % (
-      deploy_utils.get_zk_address(args.zk_config.cluster.name),
-      args.zk_config.jobs["zookeeper"].base_port)
+      deploy_utils.get_zk_address(args.zookeeper_config.cluster.name),
+      args.zookeeper_config.jobs["zookeeper"].base_port)
 
   cmd = (["java", "-cp", class_path] + zookeeper_opts + [main_class,
       "-server", zk_address] + options)
@@ -330,10 +272,9 @@ def generate_client_config(args, artifact, version):
   deploy_utils.write_file("%s/zookeeper.cfg" % config_path,
       generate_zookeeper_config(args))
   deploy_utils.write_file("%s/jaas.conf" % config_path,
-      generate_client_jaas_config(args,
-        deploy_utils.get_user_principal_from_ticket_cache()))
+      generate_client_jaas_config(args))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
-      open('%s/krb5-hadoop.conf' % deploy_utils.get_config_dir()).read())
+      args.zookeeper_config.configuration.raw_files["krb5.conf"])
   update_zk_env_sh(args, artifact, version)
 
 def update_zk_env_sh(args, artifact, version):
@@ -349,7 +290,7 @@ def update_zk_env_sh(args, artifact, version):
 
 def pack(args):
   get_zk_service_config(args)
-  version = args.zk_config.cluster.version
+  version = args.zookeeper_config.cluster.version
   deploy_utils.make_package_dir(args, "zookeeper", version)
   generate_client_config(args, "zookeeper", version)
 
@@ -365,16 +306,16 @@ def rolling_update(args):
     deploy_utils.confirm_action(args, "rolling_update")
 
   Log.print_info("Rolling updating %s" % job_name)
-  hosts = args.zk_config.jobs[job_name].hosts
+  hosts = args.zookeeper_config.jobs[job_name].hosts
   wait_time = 0
   for id in hosts.iterkeys():
     deploy_utils.confirm_rolling_update(id, wait_time)
     stop_job(args, hosts[id], job_name)
     deploy_utils.wait_for_job_stopping("zookeeper",
-        args.zk_config.cluster.name, job_name, hosts[id])
+        args.zookeeper_config.cluster.name, job_name, hosts[id])
     start_job(args, hosts[id], job_name)
     deploy_utils.wait_for_job_starting("zookeeper",
-        args.zk_config.cluster.name, job_name, hosts[id])
+        args.zookeeper_config.cluster.name, job_name, hosts[id])
     wait_time = args.time_interval
   Log.print_success("Rolling updating %s success" % job_name)
 

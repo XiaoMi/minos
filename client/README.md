@@ -9,6 +9,7 @@ In order to run the deployment client, you need the following prerequisites:
     1. python 2.7 or later from <http://www.python.org>
     2. pexpect (latest) from <http://www.noah.org/wiki/pexpect>
     3. JDK 1.6 from <http://www.oracle.com/technetwork/java/javase/downloads/index.html>
+    4. ConfigObj 4 from <http://www.voidspace.org.uk/python/configobj.html>
 
 ## A Simple Tutorial
 

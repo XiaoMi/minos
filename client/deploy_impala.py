@@ -15,57 +15,17 @@ from deploy_utils import Log
 
 ALL_JOBS = ["statestored", "impalad"]
 
-STATESTORED_JOB_SCHEMA = {
-}
-
-IMPALAD_JOB_SCHEMA = {
-  "hdfs_root": (str, None),
-}
-
-IMPALA_SERVICE_MAP = {
-  "statestored": STATESTORED_JOB_SCHEMA,
-  "impalad": IMPALAD_JOB_SCHEMA,
-}
-
 def get_impala_service_config(args):
-  args.impala_config = deploy_utils.get_service_config_full(
-      args, IMPALA_SERVICE_MAP)
+  args.impala_config = deploy_utils.get_service_config(args)
 
-  hdfs_root = args.impala_config.jobs["impalad"].hdfs_root
-  url = urlparse.urlparse(hdfs_root)
-  if url.scheme != "hdfs":
-    Log.print_critical("Only hdfs supported as data root: %s" % hdfs_root)
-  args.impala_config.jobs["impalad"].hdfs_root = hdfs_root.rstrip("/")
-
-  hdfs_args = argparse.Namespace()
-  hdfs_args.root = deploy_utils.get_root_dir("hdfs")
-  hdfs_args.service = "hdfs"
-  hdfs_args.cluster = url.netloc
-  args.hdfs_config = deploy_utils.get_service_config(
-      hdfs_args, deploy_hdfs.HDFS_SERVICE_MAP)
-
-def generate_hive_site_xml(args, host, job_name):
-  config_dict = {
-    #TODO make this configurable
-    "hive.metastore.uris": "thrift://10.2.201.33:9083",
-  }
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_hdfs_site_xml(args, host, job_name):
-  config_dict = deploy_hdfs.generate_hdfs_site_dict_client(args)
-  config_dict.update(args.impala_config.cluster.site_xml)
-
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_configs(args, host, job_name):
-  job = args.impala_config.jobs[job_name]
-  core_site_xml = deploy_hdfs.generate_core_site_xml(args, job_name,
-      "impala", args.impala_config.cluster.enable_security, job)
-  hdfs_site_xml = generate_hdfs_site_xml(args, host, job_name)
-  hive_site_xml = generate_hive_site_xml(args, host, job_name)
-  log4j_xml = open("%s/impala/log4j.xml" % deploy_utils.get_template_dir()).read()
+def generate_configs(args):
+  core_site_xml = deploy_utils.generate_site_xml(args,
+    args.impala_config.configuration.generated_files["core-site.xml"])
+  hdfs_site_xml = deploy_utils.generate_site_xml(args,
+    args.impala_config.configuration.generated_files["hdfs-site.xml"])
+  hive_site_xml = deploy_utils.generate_site_xml(args,
+    args.impala_config.configuration.generated_files["hive-site.xml"])
+  log4j_xml = args.impala_config.configuration.raw_files["log4j.xml"]
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -110,7 +70,7 @@ def generate_run_scripts_params(args, host, job_name):
     script_dict["params"] += "-beeswax_port=%d " % impalad.base_port
     script_dict["params"] += "-hs2_port=%d " % (impalad.base_port + 4)
 
-  if args.impala_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     script_dict["params"] += "-principal=%s/hadoop@%s " % (
         args.impala_config.cluster.kerberos_username or "impala",
         args.impala_config.cluster.kerberos_realm)
@@ -157,7 +117,7 @@ def bootstrap(args):
       bootstrap_job(args, hosts[id], job_name, cleanup_token)
 
 def start_job(args, host, job_name):
-  config_files = generate_configs(args, host, job_name)
+  config_files = generate_configs(args)
   start_script = generate_start_script(args, host, job_name)
   http_url = "http://%s:%d" % (host,
       args.impala_config.jobs[job_name].base_port + 1)

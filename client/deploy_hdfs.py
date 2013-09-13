@@ -1,37 +1,14 @@
 #!/usr/bin/env python
 
+import deploy_utils
 import subprocess
 import sys
 import time
-
-import deploy_utils
 
 from deploy_utils import Log
 
 
 ALL_JOBS = ["journalnode", "zkfc", "namenode", "datanode"]
-
-JOURNALNODE_JOB_SCHEMA = {
-    # "param_name": (type, default_value)
-    # type must be in {bool, int, float, str}
-    # if default_value is None, it means it's NOT an optional parameter.
-}
-
-NAMENODE_JOB_SCHEMA = {
-}
-
-ZKFC_JOB_SCHEMA = {
-}
-
-DATANODE_JOB_SCHEMA = {
-}
-
-HDFS_SERVICE_MAP = {
-    "journalnode": JOURNALNODE_JOB_SCHEMA,
-    "namenode": NAMENODE_JOB_SCHEMA,
-    "zkfc": ZKFC_JOB_SCHEMA,
-    "datanode": DATANODE_JOB_SCHEMA,
-}
 
 JOB_MAIN_CLASS = {
     "journalnode": "org.apache.hadoop.hdfs.qjournal.server.JournalNode",
@@ -65,241 +42,6 @@ SHELL_COMMAND_INFO = {
       "get the groups which users belong to"),
 }
 
-def generate_core_site_dict(args, job_name, http_user,
-    security_enabled=False, job=None):
-  if not job:
-    job = args.hdfs_config.jobs[job_name]
-
-  zk_job = args.zk_config.jobs["zookeeper"]
-  zk_hosts = ",".join(
-      ["%s:%d" % (host, zk_job.base_port + 0)
-          for id, host in zk_job.hosts.iteritems()])
-
-  config_dict = {
-      "fs.defaultFS": "hdfs://" + args.hdfs_config.cluster.name,
-      "ha.zookeeper.quorum": zk_hosts,
-      "hadoop.tmp.dir": "/tmp/hadoop",
-      "io.file.buffer.size": 131072,
-      "hadoop.http.staticuser.user": http_user,
-  }
-
-  # config to enable hdfs users access hdfs through the webhdfs proxy user 'hue'
-  config_dict.update({
-    "hadoop.proxyuser.hue.hosts": "*",
-    "hadoop.proxyuser.hue.groups": "*",
-    "hue.kerberos.principal.shortname": "hue",
-  })
-
-  # config security
-  if security_enabled:
-    config_dict.update({
-      "hadoop.security.authentication": "kerberos",
-      "hadoop.security.authorization": "true",
-      "hadoop.security.use-weak-http-crypto": "false",
-    })
-  return config_dict
-
-def generate_core_site_xml(args, job_name, http_user,
-    security_enabled=False, job=None):
-  config_dict = generate_core_site_dict(args, job_name,
-      http_user, security_enabled, job)
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_hdfs_site_dict(args, job_host, job_name):
-  cluster_name = args.hdfs_config.cluster.name
-
-  job = args.hdfs_config.jobs["namenode"]
-  namenode_hosts = ",".join(
-      ["host%d" % id for id, host in job.hosts.iteritems()])
-
-  job = args.hdfs_config.jobs["journalnode"]
-  journalnode_hosts = ";".join(
-      ["%s:%d" % (host, job.base_port + 0)
-          for id, host in job.hosts.iteritems()])
-
-  config_dict = {}
-  config_dict.update(args.hdfs_config.cluster.site_xml)
-  config_dict.update(args.hdfs_config.jobs[job_name].site_xml)
-  config_dict.update({
-      # config for client (mainly for namenode)
-      "dfs.nameservices": cluster_name,
-      "dfs.ha.namenodes." + cluster_name: namenode_hosts,
-
-      "dfs.client.failover.proxy.provider." + cluster_name:
-          "org.apache.hadoop.hdfs.server.namenode.ha."
-          "ConfiguredFailoverProxyProvider",
-  })
-
-  job = args.hdfs_config.jobs["namenode"]
-  for id, host in job.hosts.iteritems():
-    config_dict["dfs.namenode.rpc-address.%s.host%d" % (cluster_name, id)] = (
-        "%s:%d" % (host, job.base_port + 0))
-    config_dict["dfs.namenode.http-address.%s.host%d" % (cluster_name, id)] = (
-        "%s:%d" % (host, job.base_port + 1))
-
-  config_dict.update({
-      # config for journalnode:
-      "dfs.journalnode.rpc-address": "0.0.0.0:%d" %
-          (args.hdfs_config.jobs["journalnode"].base_port + 0),
-      "dfs.journalnode.http-address": "0.0.0.0:%d" %
-          (args.hdfs_config.jobs["journalnode"].base_port + 1),
-
-      # config for namenode and zkfc:
-      "dfs.namenode.shared.edits.dir":
-          "qjournal://%s/%s" % (journalnode_hosts, cluster_name),
-
-      "dfs.ha.zkfc.port": "%d" % (args.hdfs_config.jobs["zkfc"].base_port + 0),
-
-      # TODO: make following options configurable, or finalize them.
-      "dfs.ha.fencing.methods": "sshfence&#xA;shell(/bin/true)",
-      "dfs.ha.fencing.ssh.private-key-files":
-          "/home/%s/.ssh/id_rsa" % args.remote_user,
-
-      "dfs.ha.fencing.ssh.connect-timeout": 2000,
-      "dfs.ha.automatic-failover.enabled": "true",
-
-      # config for datanode
-      "dfs.block.local-path-access.user": "%s, hbase, hbase_srv, impala" % args.remote_user,
-
-      "dfs.datanode.ipc.address": "0.0.0.0:%d" %
-          (args.hdfs_config.jobs["datanode"].base_port + 0),
-      "dfs.datanode.http.address": "0.0.0.0:%d" %
-          (args.hdfs_config.jobs["datanode"].base_port + 1),
-      "dfs.datanode.address": "0.0.0.0:%d" %
-          (args.hdfs_config.jobs["datanode"].base_port + 2),
-
-      # TODO: make following options configurable, or finalize them.
-      "dfs.datanode.max.xcievers": 4096,
-      "dfs.permissions": "false",
-      "dfs.namenode.handler.count": 64,
-      "dfs.block.size": "128m",
-      # NOTE: comment this out because we need to format namenode.
-      #"dfs.namenode.support.allow.format": "false",
-      # NOTE: comment this out because if we have data dirs less than to equal
-      # to 2, the datanode would fail to start.
-      #"dfs.datanode.failed.volumes.tolerated": 2,
-      "dfs.client.read.shortcircuit": "true",
-      # Number of minutes between trash checkpoints.
-      "fs.trash.interval": 10080, # 7 days
-      # Number of minutes after which the checkpoint gets deleted.
-      "fs.trash.checkpoint.interval": 1440, # 1 day
-  })
-
-  if job_host:
-    supervisor_client = deploy_utils.get_supervisor_client(job_host,
-        "hdfs", cluster_name, job_name)
-    if job_name == "namenode":
-      run_dir = supervisor_client.get_run_dir()
-      config_dict.update({
-          "dfs.namenode.name.dir":
-              supervisor_client.get_available_data_dirs()[0],
-          "net.topology.table.file.name": "%s/rackinfo.txt" % run_dir,
-          "net.topology.node.switch.mapping.impl":
-              "org.apache.hadoop.net.TableMapping",
-          "dfs.hosts.exclude": "%s/excludes" % run_dir,
-      })
-    elif job_name == "datanode":
-      datanode_dirs = ",".join(supervisor_client.get_available_data_dirs())
-      config_dict.update({
-          "dfs.datanode.data.dir": datanode_dirs,
-      })
-    elif job_name == "journalnode":
-      config_dict.update({
-          "dfs.journalnode.edits.dir":
-              supervisor_client.get_available_data_dirs()[0],
-      })
-
-  # config dfs acl
-  if args.hdfs_config.cluster.enable_acl:
-    config_dict.update({
-        "dfs.permissions": "true",
-        "dfs.web.ugi": "hdfs,supergroup",
-        "dfs.permissions.superusergroup": "supergroup",
-        "dfs.permissions.superuser": "hdfs_admin",
-        "dfs.namenode.upgrade.permission": "0777",
-        "fs.permissions.umask-mode": "022",
-        "dfs.cluster.administrators": "hdfs_admin",
-        "hadoop.security.group.mapping":
-          "org.apache.hadoop.security.ConfigurationBasedGroupsMapping",
-    })
-
-    if job_host:
-      supervisor_client = deploy_utils.get_supervisor_client(job_host,
-          "hdfs", cluster_name, job_name)
-      run_dir = supervisor_client.get_run_dir()
-      config_dict.update({
-          "hadoop.security.group.mapping.file.name":
-            "%s/hadoop-groups.conf" % run_dir,
-      })
-
-  # config security
-  username = args.hdfs_config.cluster.kerberos_username
-  if args.hdfs_config.cluster.enable_security:
-    config_dict.update({
-      # general HDFS security config
-      "dfs.block.access.token.enable": "true",
-      "ignore.secure.ports.for.testing": "true",
-
-      # namenode security config
-      # TODO: make the realm name(here is for_hadoop) configurable
-      "dfs.namenode.keytab.file": "%s/%s.keytab" % (
-        deploy_utils.HADOOP_CONF_PATH, username),
-      "dfs.namenode.kerberos.principal": "%s/hadoop@%s" % (
-        args.hdfs_config.cluster.kerberos_username or "hdfs",
-        args.hdfs_config.cluster.kerberos_realm),
-      "dfs.namenode.kerberos.internal.spnego.principal":
-        "HTTP/hadoop@%s" % args.hdfs_config.cluster.kerberos_realm,
-
-      # secondary namenode security config
-      "dfs.secondary.namenode.keytab.file": "%s/%s.keytab" % (
-        deploy_utils.HADOOP_CONF_PATH, username),
-      "dfs.secondary.namenode.kerberos.principal": "%s/hadoop@%s" % (
-        args.hdfs_config.cluster.kerberos_username or "hdfs",
-        args.hdfs_config.cluster.kerberos_realm),
-      "dfs.secondary.namenode.kerberos.internal.spnego.principal":
-        "HTTP/hadoop@%s" % args.hdfs_config.cluster.kerberos_realm,
-
-      # datanode security config
-      "dfs.datanode.data.dir.perm": "700",
-      "dfs.datanode.keytab.file": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-      "dfs.datanode.kerberos.principal": "%s/hadoop@%s" % (
-          args.hdfs_config.cluster.kerberos_username or "hdfs",
-          args.hdfs_config.cluster.kerberos_realm),
-
-      # journalnode security config
-      "dfs.journalnode.keytab.file": "%s/%s.keytab" % (
-          deploy_utils.HADOOP_CONF_PATH, username),
-      "dfs.journalnode.kerberos.principal": "%s/hadoop@%s" % (
-          args.hdfs_config.cluster.kerberos_username or "hdfs",
-          args.hdfs_config.cluster.kerberos_realm),
-      "dfs.journalnode.kerberos.internal.spnego.principal":
-        "HTTP/hadoop@%s" % args.hdfs_config.cluster.kerberos_realm,
-
-      # config web
-      "dfs.web.authentication.kerberos.principal":
-        "HTTP/hadoop@%s" % args.hdfs_config.cluster.kerberos_realm,
-      "dfs.web.authentication.kerberos.keytab":
-        "%s/%s.keytab" % (deploy_utils.HADOOP_CONF_PATH, username),
-    })
-  return config_dict
-
-def generate_hdfs_site_xml(args, job_host, job_name):
-  config_dict = generate_hdfs_site_dict(args, job_host, job_name)
-  local_path = "%s/site.xml.tmpl" % deploy_utils.get_template_dir()
-  return deploy_utils.generate_site_xml(args, local_path, config_dict)
-
-def generate_hdfs_site_dict_client(args):
-  # We assume client use the same config as namenode:
-  return generate_hdfs_site_dict(args, "", "namenode")
-
-def generate_hdfs_site_xml_client(args):
-  # We assume client use the same config as namenode:
-  return generate_hdfs_site_xml(args,
-      args.hdfs_config.jobs["namenode"].hosts[0],
-      "namenode")
-
 def generate_metrics_config(args, host, job_name):
   job = args.hdfs_config.jobs[job_name]
 
@@ -311,7 +53,7 @@ def generate_metrics_config(args, host, job_name):
     ganglia_switch = ""
   config_dict = {
       "job_name": job_name,
-      "period": job.metrics_period,
+      "period": 10,
       "data_dir": supervisor_client.get_log_dir(),
       "ganglia_address": args.hdfs_config.cluster.ganglia_address,
       "ganglia_switch": ganglia_switch,
@@ -322,29 +64,23 @@ def generate_metrics_config(args, host, job_name):
   return template.substitute(config_dict)
 
 def generate_configs(args, host, job_name):
-  core_site_xml = generate_core_site_xml(args, job_name, "hdfs",
-      args.hdfs_config.cluster.enable_security)
-  hdfs_site_xml = generate_hdfs_site_xml(args, host, job_name)
+  core_site_xml = deploy_utils.generate_site_xml(args,
+    args.hdfs_config.configuration.generated_files["core-site.xml"])
+  hdfs_site_xml = deploy_utils.generate_site_xml(args,
+    args.hdfs_config.configuration.generated_files["hdfs-site.xml"])
   hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
-  configuration_xsl = open("%s/configuration.xsl" % deploy_utils.get_template_dir()).read()
-  log4j_xml = open("%s/hdfs/log4j.xml" % deploy_utils.get_template_dir()).read()
-  rackinfo_txt = open("%s/rackinfo.txt" % deploy_utils.get_config_dir()).read()
-  krb5_conf = open("%s/krb5-hadoop.conf" % deploy_utils.get_config_dir()).read()
-  hadoop_groups_conf = open("%s/hadoop-groups.conf" % deploy_utils.get_config_dir()).read()
-  slaves = "\n".join(args.hdfs_config.jobs["datanode"].hosts.values())
-  excludes = str()
+  hdfs_raw_files = args.hdfs_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
     "hadoop-metrics2.properties": hadoop_metrics2_properties,
-    "configuration.xsl": configuration_xsl,
-    "log4j.xml": log4j_xml,
-    "krb5.conf": krb5_conf,
-    "rackinfo.txt": rackinfo_txt,
-    "slaves": slaves,
-    "excludes": excludes,
-    "hadoop-groups.conf": hadoop_groups_conf,
+    "configuration.xsl": hdfs_raw_files["configuration.xsl"],
+    "log4j.xml": hdfs_raw_files["log4j.xml"],
+    "krb5.conf": hdfs_raw_files["krb5.conf"],
+    "rackinfo.txt": hdfs_raw_files["rackinfo.txt"],
+    "excludes": hdfs_raw_files["excludes"],
+    "hadoop-groups.conf": hdfs_raw_files["hadoop-groups.conf"],
   }
   return config_files
 
@@ -402,7 +138,7 @@ def generate_run_scripts_params(args, host, job_name):
   }
 
   # config security-related params
-  if args.hdfs_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     class_path_root = "$package_dir/share/hadoop/"
     boot_class_path = "%s/common/lib/hadoop-security-%s.jar" % (
       class_path_root, args.hdfs_config.cluster.version)
@@ -415,8 +151,7 @@ def generate_run_scripts_params(args, host, job_name):
   return script_dict
 
 def get_hdfs_service_config(args):
-  args.hdfs_config = deploy_utils.get_service_config_full(
-      args, HDFS_SERVICE_MAP)
+  args.hdfs_config = deploy_utils.get_service_config(args)
   if not args.hdfs_config.cluster.zk_cluster:
     Log.print_critical(
         "hdfs cluster must depends on a zookeeper clusters: %s" %
@@ -618,9 +353,8 @@ def run_shell(args):
   if not main_class:
     return
 
-  core_site_dict = generate_core_site_dict(args, "namenode",
-      "hdfs", args.hdfs_config.cluster.enable_security)
-  hdfs_site_dict = generate_hdfs_site_dict_client(args)
+  core_site_dict = args.hdfs_config.configuration.generated_files["core-site.xml"]
+  hdfs_site_dict = args.hdfs_config.configuration.generated_files["hdfs-site.xml"]
 
   hadoop_opts = list()
   for key, value in core_site_dict.iteritems():
@@ -639,7 +373,7 @@ def run_shell(args):
     class_path += ":%s/:%s/*:%s/lib/*" % (component_dir,
         component_dir, component_dir)
 
-  if args.hdfs_config.cluster.enable_security:
+  if deploy_utils.is_security_enabled(args):
     boot_class_path = "%s/common/lib/hadoop-security-%s.jar" % (lib_root,
         args.hdfs_config.cluster.version)
     hadoop_opts.append("-Xbootclasspath/p:%s" % boot_class_path)
@@ -657,15 +391,16 @@ def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/etc/hadoop" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/core-site.xml" % config_path,
-      generate_core_site_xml(args, "namenode", "hdfs",
-        args.hdfs_config.cluster.enable_security))
+      deploy_utils.generate_site_xml(args, 
+        args.hdfs_config.configuration.generated_files["core-site.xml"]))
   deploy_utils.write_file("%s/hdfs-site.xml" % config_path,
-      generate_hdfs_site_xml_client(args))
+      deploy_utils.generate_site_xml(args, 
+        args.hdfs_config.configuration.generated_files["hdfs-site.xml"]))
   deploy_utils.write_file("%s/hadoop-metrics2.properties" % config_path,
       generate_metrics_config(args, args.hdfs_config.jobs["namenode"].hosts[0],
         "namenode"))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
-      open('%s/krb5-hadoop.conf' % deploy_utils.get_config_dir()).read())
+      args.hdfs_config.configuration.raw_files["krb5.conf"])
   update_hadoop_env_sh(args, artifact, version, "HADOOP_OPTS")
 
 def update_hadoop_env_sh(args, artifact, version, opts_name):

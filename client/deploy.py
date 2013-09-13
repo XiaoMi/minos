@@ -242,6 +242,7 @@ def process_command_show(args):
   Log.print_critical("Not implemented for service: %s", args.service)
 
 def process_command_shell(args):
+  deploy_utils.check_admin_priviledge(args)
   deploy_tool = SERVICE_DEPLOY_TOOL_MAP.get(args.service)
   if deploy_tool:
     return deploy_tool.run_shell(args)
