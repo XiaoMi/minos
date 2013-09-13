@@ -8,7 +8,7 @@ python 2.7
 
 python lib:
 
-django 1.4.0 <https://www.djangoproject.com/>
+django 1.5.x <https://www.djangoproject.com/>
 
 twisted <http://twistedmatrix.com/>
 
