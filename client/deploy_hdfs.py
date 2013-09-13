@@ -391,10 +391,10 @@ def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/etc/hadoop" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/core-site.xml" % config_path,
-      deploy_utils.generate_site_xml(args, 
+      deploy_utils.generate_site_xml(args,
         args.hdfs_config.configuration.generated_files["core-site.xml"]))
   deploy_utils.write_file("%s/hdfs-site.xml" % config_path,
-      deploy_utils.generate_site_xml(args, 
+      deploy_utils.generate_site_xml(args,
         args.hdfs_config.configuration.generated_files["hdfs-site.xml"]))
   deploy_utils.write_file("%s/hadoop-metrics2.properties" % config_path,
       generate_metrics_config(args, args.hdfs_config.jobs["namenode"].hosts[0],

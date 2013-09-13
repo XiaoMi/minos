@@ -334,7 +334,7 @@ def check_admin_priviledge(args):
   '''
   status, short_user_name = service_config.get_short_user_name_full()
   args.short_user_name = short_user_name
-  
+
   if is_security_enabled(args):
     if status:
       admin_list = get_deploy_config().get_admin_list()
@@ -361,7 +361,7 @@ def is_security_enabled(args):
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
   elif args.service == "hbase":
-    hbase_site_dict = args.hbase_config.configuration.generated_files["hbase-site.xml"] 
+    hbase_site_dict = args.hbase_config.configuration.generated_files["hbase-site.xml"]
     return (hbase_site_dict["hbase.security.authentication"] == "kerberos") and (
              hbase_site_dict["hbase.security.authorization"] == "true")
   elif args.service == "impala":

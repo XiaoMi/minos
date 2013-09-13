@@ -48,7 +48,7 @@ def generate_metrics_config(args, host, job_name):
     ganglia_switch = ""
   config_dict = {
       "job_name": job_name,
-      "period": 10, 
+      "period": 10,
       "data_dir": supervisor_client.get_log_dir(),
       "ganglia_address": args.yarn_config.cluster.ganglia_address,
       "ganglia_switch": ganglia_switch,
@@ -68,7 +68,7 @@ def generate_configs(args, host, job_name):
   yarn_site_xml = deploy_utils.generate_site_xml(args,
     args.yarn_config.configuration.generated_files["yarn-site.xml"])
   hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
-  yarn_raw_files = args.yarn_config.configuration.raw_files  
+  yarn_raw_files = args.yarn_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -258,7 +258,7 @@ def run_shell(args):
       args, SHELL_COMMAND_INFO)
   if not main_class:
     return
-  
+
   core_site_dict = args.yarn_config.configuration.generated_files["core-site.xml"]
   hdfs_site_dict = args.yarn_config.configuration.generated_files["hdfs-site.xml"]
   mapred_site_dict = args.yarn_config.configuration.generated_files["mapred-site.xml"]
@@ -301,10 +301,10 @@ def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/etc/hadoop" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/mapred-site.xml" % config_path,
-      deploy_utils.generate_site_xml(args, 
+      deploy_utils.generate_site_xml(args,
         args.yarn_config.configuration.generated_files["mapred-site.xml"]))
   deploy_utils.write_file("%s/yarn-site.xml" % config_path,
-      deploy_utils.generate_site_xml(args, 
+      deploy_utils.generate_site_xml(args,
         args.yarn_config.configuration.generated_files["yarn-site.xml"]))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
       args.yarn_config.configuration.raw_files["krb5.conf"])

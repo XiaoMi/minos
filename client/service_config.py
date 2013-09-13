@@ -29,7 +29,7 @@ def get_service_config(args, service, cluster_name):
     service_args = argparse.Namespace()
     service_args.service = service
     service_args.cluster = cluster_name
-    setattr(args, service + "_config", ServiceConfig(service_args))   
+    setattr(args, service + "_config", ServiceConfig(service_args))
   return getattr(args, service + "_config")
 
 def get_zk_job(args, cluster):
@@ -68,8 +68,8 @@ def get_zk_server_list(args, cluster, jobs):
 
 def get_supervisor_client(host, service, cluster_name, job):
   supervisor_config = deploy_config.get_deploy_config().get_supervisor_config()
-  return SupervisorClient(host, supervisor_config.get('server_port'), 
-    supervisor_config.get('user'), supervisor_config.get('password'), 
+  return SupervisorClient(host, supervisor_config.get('server_port'),
+    supervisor_config.get('user'), supervisor_config.get('password'),
     service, cluster_name, job)
 
 def get_config_dir(args=None, cluster=None, jobs=None):
@@ -115,7 +115,7 @@ def get_specific_dir(host, service, cluster_name, job_name, attribute):
 
 
 def get_service_job_attribute(args, cluster, jobs, val):
-  reg_expr = SERVICE_JOB_ATTRIBUTE_REGEX.match(val)  
+  reg_expr = SERVICE_JOB_ATTRIBUTE_REGEX.match(val)
   service = reg_expr.group('service')
   job_name = reg_expr.group('job')
   attribute = reg_expr.group('attribute')
@@ -125,7 +125,7 @@ def get_service_job_attribute(args, cluster, jobs, val):
     return service_config.jobs[job_name].base_port
   else:
     host = service_config.jobs[job_name].hosts[0]
-    return get_specific_dir(host, service, cluster.name, job_name, attribute) 
+    return get_specific_dir(host, service, cluster.name, job_name, attribute)
 
 def get_section_attribute(args, cluster, jobs, val):
   reg_expr = SECTION_ATTRIBUTE_REGEX.match(val)
@@ -139,7 +139,7 @@ def get_section_attribute(args, cluster, jobs, val):
       return jobs[section].base_port
     else:
       host = jobs[section].hosts[0]
-      return get_specific_dir(host, args.service, cluster.name, section, attribute)    
+      return get_specific_dir(host, args.service, cluster.name, section, attribute)
 
 
 CLUSTER_NAME_REGEX = re.compile(r'((?P<zk>[a-z0-9]+)-)?([a-z0-9]+)')
@@ -157,7 +157,7 @@ SERVICE_JOB_HOST_ID_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.host\.(?
 SCHEMA_MAP = {
   JOB_HOST_ID_REGEX : get_job_host,
   JOB_PORT_EXPR_REGEX : get_port_addition_result,
-  SECTION_ATTRIBUTE_REGEX : get_section_attribute, 
+  SECTION_ATTRIBUTE_REGEX : get_section_attribute,
   SERVICE_JOB_HOST_ID_REGEX : get_service_job_host,
   SERVICE_JOB_ATTRIBUTE_REGEX : get_service_job_attribute,
   "zk.hosts" : get_zk_hosts,
@@ -195,7 +195,7 @@ CLUSTER_SCHEMA = {
 
 class ServiceConfig:
   '''
-  The class represents the configuration of a service. 
+  The class represents the configuration of a service.
   '''
   def __init__(self, args):
     self.config_dict_full = self.get_config_dict_full(
@@ -264,9 +264,9 @@ class ServiceConfig:
 
   def get_config_dict_full(self, config_path):
     '''
-    Get the whole configuration dict: reading the base common-config and 
+    Get the whole configuration dict: reading the base common-config and
     using the child_config_dict to update the base_config_dict
-   
+
     @param   config_path      The path for configuration file
     @return  dict             The whole configuration dict
     '''
@@ -277,7 +277,7 @@ class ServiceConfig:
       config_path = child_config_dict['configuration']['base']
 
       if config_path.find('$') != -1:
-        config_path = self.parse_item(None, None, None, config_path) 
+        config_path = self.parse_item(None, None, None, config_path)
 
       base_config_dict = self.get_config_dict_full(config_path)
       child_configuration_dict = child_config_dict['configuration']
@@ -307,20 +307,20 @@ class ServiceConfig:
           param_value = section_dict.as_float(param_name)
         else:
           param_value = section_dict[param_name]
-      else: 
+      else:
         # option not found, use the default value if there is.
         if param_def[1] is None:
           Log.print_critical("required option %s missed in section %s!" %
             (param_name, section_name))
         else:
           param_value = param_def[1]
-      setattr(namespace, param_name, param_value)    
+      setattr(namespace, param_name, param_value)
 
 
   @staticmethod
   def parse_item(args, cluster, jobs, item):
     '''
-    Parse item which is enclosed by '${}' in key/value   
+    Parse item which is enclosed by '${}' in key/value
     '''
     reg_expr = VARIABLE_REGEX.findall(item)
     new_item = []
@@ -340,14 +340,14 @@ class ServiceConfig:
   def parse(config_section_dict, args, cluster, jobs):
     '''
     Parse and calculate key/value which contains '${}',
-    generate configuration file dicts as {file_name : file_dict} 
+    generate configuration file dicts as {file_name : file_dict}
     and read local configuration files as {file_name : file_content_str}
     '''
     raw_files = {}
     for file_name, file_dict in config_section_dict.iteritems():
       if type(file_dict) == str:
         file_dict = ServiceConfig.parse_item(args, cluster, jobs, file_dict)
-        raw_files[file_name] = open(file_dict).read() 
+        raw_files[file_name] = open(file_dict).read()
       else:
         for key, value in file_dict.iteritems():
           if key.find('$') != -1:

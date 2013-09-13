@@ -46,7 +46,7 @@ def generate_metrics_config(args, host, job_name):
     ganglia_switch = ""
   config_dict = {
       "job_name": job_name,
-      "period": 10,  
+      "period": 10,
       "data_dir": supervisor_client.get_log_dir(),
       "ganglia_address": args.hbase_config.cluster.ganglia_address,
       "ganglia_switch": ganglia_switch,
