@@ -369,7 +369,7 @@ def is_security_enabled(args):
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
   else:
-    return false
+    return False
 
 def confirm_bootstrap(service, service_config):
   '''

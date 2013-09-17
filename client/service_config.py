@@ -22,18 +22,28 @@ def get_port_addition_result(args, cluster, jobs, val):
   add_num = int(reg_expr.group('num'))
   return jobs[job].base_port + add_num
 
-def get_service_config(args, service, cluster_name):
+def get_service_cluster_name(service, cluster):
+  if service == "zookeeper":
+    return cluster.zk_cluster
+  elif service == "hdfs":
+    hdfs_cluster = cluster.hdfs_cluster
+    if hdfs_cluster != cluster.name:
+      return hdfs_cluster
+    else:
+      return cluster.name
+
+def get_service_config(args, service, cluster):
   get_short_user_name(args)
 
   if not getattr(args, service + "_config", None):
     service_args = argparse.Namespace()
     service_args.service = service
-    service_args.cluster = cluster_name
+    service_args.cluster = get_service_cluster_name(service, cluster)
     setattr(args, service + "_config", ServiceConfig(service_args))
   return getattr(args, service + "_config")
 
 def get_zk_job(args, cluster):
-  zk_config = get_service_config(args, "zookeeper", cluster.zk_cluster)
+  zk_config = get_service_config(args, "zookeeper", cluster)
   return zk_config.jobs["zookeeper"]
 
 def get_zk_hosts(args, cluster, jobs):
@@ -55,7 +65,7 @@ def get_service_job_host(args, cluster, jobs, val):
   service = reg_expr.group('service')
   job = reg_expr.group('job')
   host_id = int(reg_expr.group('id'))
-  service_config = get_service_config(args, service, cluster.name)
+  service_config = get_service_config(args, service, cluster)
   return service_config.jobs[job].hosts[host_id]
 
 def get_zk_server_list(args, cluster, jobs):
@@ -113,14 +123,13 @@ def get_specific_dir(host, service, cluster_name, job_name, attribute):
   elif attribute == "current_package_dir":
     return supervisor_client.get_current_package_dir()
 
-
 def get_service_job_attribute(args, cluster, jobs, val):
   reg_expr = SERVICE_JOB_ATTRIBUTE_REGEX.match(val)
   service = reg_expr.group('service')
   job_name = reg_expr.group('job')
   attribute = reg_expr.group('attribute')
 
-  service_config = get_service_config(args, service, cluster.name)
+  service_config = get_service_config(args, service, cluster)
   if attribute == "base_port":
     return service_config.jobs[job_name].base_port
   else:
@@ -191,6 +200,7 @@ CLUSTER_SCHEMA = {
   "package_name": (str, ""),
   "revision": (str, ""),
   "timestamp": (str, ""),
+  "hdfs_cluster": (str, ""),
 }
 
 class ServiceConfig:
