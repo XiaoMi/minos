@@ -294,7 +294,7 @@ def check_admin_priviledge(args):
       admin_list = get_deploy_config().get_admin_list()
       if short_user_name not in admin_list:
         Log.print_critical("User %s is not an authorized administrator, "
-          "this operation can't be processed" % user)
+          "this operation can't be processed" % short_user_name)
     else:
       Log.print_critical('You must kinit your kerberos principal first')
 
