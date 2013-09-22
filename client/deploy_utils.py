@@ -84,11 +84,20 @@ def get_local_package_path(artifact, version):
     Log.print_critical("Unknow artifact: %s" % artifact)
   return package_path
 
+def get_revision_number(cmd, output_prefix):
+  env = os.environ
+  # Enforce English locale.
+  env["LC_ALL"] = "C"
+  content = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)
+  for line in content.splitlines():
+    if line.startswith(output_prefix):
+      return line[len(output_prefix):]
+
 def generate_package_revision(root):
   '''
-  Get the revision of the package. Currently, only svn revision is
-  supported. If the package directory is not a svn working directory,
-  a fake revision will be returned.
+  Get the revision of the package. Currently, svn revision and git commit are
+  supported. If the package directory is neither a svn working directory nor
+  a git working directory, a fake revision will be returned.
 
   @param  root   the local package root directory
   @return string the revision of the package
@@ -103,15 +112,14 @@ def generate_package_revision(root):
     abs_path = root
 
   try:
-    cmd = ["svn", "info", abs_path]
-    env = os.environ
-    # Enforce English locale.
-    env["LC_ALL"] = "C"
-    revision_prefix = "Revision: "
-    content = subprocess.check_output(cmd, env=env)
-    for line in content.splitlines():
-     if line.startswith(revision_prefix):
-       return "r%s" % line[len(revision_prefix):]
+    try:
+      cmd = ["svn", "info", abs_path]
+      revision_prefix = "Revision: "
+      return "r%s" % get_revision_number(cmd, revision_prefix)
+    except:
+      cmd = ["git", "show", abs_path]
+      commit_prefix = "commit "
+      return get_revision_number(cmd, commit_prefix)
   except:
     # We cannot get the version No., just return a fake one
     return "r%s" % FAKE_SVN_VERSION
