@@ -13,7 +13,7 @@ import deploy_zookeeper
 import deploy_yarn
 import deploy_impala
 
-from deploy_utils import Log
+from log import Log
 
 SERVICE_DEPLOY_TOOL_MAP = {
   "hdfs": deploy_hdfs,

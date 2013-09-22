@@ -12,7 +12,7 @@ import sys
 import tempfile
 import urlparse
 
-from deploy_utils import Log
+from log import Log
 
 # regionserver must start before master
 ALL_JOBS = ["regionserver", "master"]

@@ -7,7 +7,7 @@ import subprocess
 import sys
 import urlparse
 
-from deploy_utils import Log
+from log import Log
 
 
 ALL_JOBS = ["resourcemanager", "nodemanager", "historyserver", "proxyserver"]

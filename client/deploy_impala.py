@@ -10,7 +10,7 @@ import urlparse
 import deploy_hdfs
 import deploy_utils
 
-from deploy_utils import Log
+from log import Log
 
 
 ALL_JOBS = ["statestored", "impalad"]

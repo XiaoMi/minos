@@ -8,6 +8,7 @@ import re
 import subprocess
 
 from configobj import ConfigObj
+from log import Log
 from supervisor_client import SupervisorClient
 
 def get_job_host(args, cluster, jobs, val):

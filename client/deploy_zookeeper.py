@@ -8,7 +8,7 @@ import sys
 import tempfile
 import time
 
-from deploy_utils import Log
+from log import Log
 
 MYID_FILE = "myid"
 

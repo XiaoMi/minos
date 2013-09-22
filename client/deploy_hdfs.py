@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 
-from deploy_utils import Log
+from log import Log
 
 
 ALL_JOBS = ["journalnode", "zkfc", "namenode", "datanode"]
