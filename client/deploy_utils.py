@@ -117,7 +117,7 @@ def generate_package_revision(root):
       revision_prefix = "Revision: "
       return "r%s" % get_revision_number(cmd, revision_prefix)
     except:
-      cmd = ["git", "show", abs_path]
+      cmd = ["git", "show"]
       commit_prefix = "commit "
       return get_revision_number(cmd, commit_prefix)
   except:
