@@ -68,7 +68,6 @@ def generate_configs(args, host, job_name):
   yarn_site_xml = deploy_utils.generate_site_xml(args,
     args.yarn_config.configuration.generated_files["yarn-site.xml"])
   hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
-  yarn_raw_files = args.yarn_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -76,11 +75,9 @@ def generate_configs(args, host, job_name):
     "mapred-site.xml": mapred_site_xml,
     "yarn-site.xml": yarn_site_xml,
     "hadoop-metrics2.properties": hadoop_metrics2_properties,
-    "configuration.xsl": yarn_raw_files["configuration.xsl"],
-    "log4j.xml": yarn_raw_files["log4j.xml"],
-    "krb5.conf": yarn_raw_files["krb5.conf"],
-    "excludes": yarn_raw_files["excludes"],
   }
+  config_files.update(args.yarn_config.configuration.raw_files)
+
   return config_files
 
 def generate_run_scripts_params(args, host, job_name):

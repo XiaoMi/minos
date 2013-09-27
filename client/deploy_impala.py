@@ -25,14 +25,14 @@ def generate_configs(args):
     args.impala_config.configuration.generated_files["hdfs-site.xml"])
   hive_site_xml = deploy_utils.generate_site_xml(args,
     args.impala_config.configuration.generated_files["hive-site.xml"])
-  log4j_xml = args.impala_config.configuration.raw_files["log4j.xml"]
 
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
     "hive-site.xml": hive_site_xml,
-    "log4j.xml": log4j_xml,
   }
+  config_files.update(args.impala_config.configuration.raw_files)
+
   return config_files
 
 def generate_run_scripts_params(args, host, job_name):
@@ -43,6 +43,7 @@ def generate_run_scripts_params(args, host, job_name):
   statestored = args.impala_config.jobs["statestored"]
 
   artifact_and_version = "impala-" + args.impala_config.cluster.version
+
   script_dict = {
     "artifact": artifact_and_version,
     "job_name": job_name,

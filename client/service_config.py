@@ -358,7 +358,10 @@ class ServiceConfig:
     for file_name, file_dict in config_section_dict.iteritems():
       if type(file_dict) == str:
         file_dict = ServiceConfig.parse_item(args, cluster, jobs, file_dict)
-        raw_files[file_name] = open(file_dict).read()
+        if os.path.exists(file_dict):
+          raw_files[file_name] = open(file_dict).read()
+        else:
+          raw_files[file_name] = str()
       else:
         for key, value in file_dict.iteritems():
           if key.find('$') != -1:

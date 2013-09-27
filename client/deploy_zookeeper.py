@@ -56,17 +56,12 @@ def generate_client_jaas_config(args):
 def generate_run_scripts(args):
   config_files = dict()
 
-  zookeeper_cfg = generate_zookeeper_config(args)
-  jaas_conf = generate_jaas_config(args)
-  log4j_xml = args.zookeeper_config.configuration.raw_files["log4j.xml"]
-  krb5_conf = args.zookeeper_config.configuration.raw_files["krb5.conf"]
-
   config_files.update({
-      "zookeeper.cfg": zookeeper_cfg,
-      "jaas.conf": jaas_conf,
-      "log4j.xml": log4j_xml,
-      "krb5.conf": krb5_conf,
+      "zookeeper.cfg": generate_zookeeper_config(args),
+      "jaas.conf": generate_jaas_config(args),
   })
+  config_files.update(args.zookeeper_config.configuration.raw_files)
+
   return config_files
 
 def generate_bootstrap_script(args, host, job_name, host_id):

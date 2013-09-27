@@ -69,19 +69,14 @@ def generate_configs(args, host, job_name):
   hdfs_site_xml = deploy_utils.generate_site_xml(args,
     args.hdfs_config.configuration.generated_files["hdfs-site.xml"])
   hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
-  hdfs_raw_files = args.hdfs_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
     "hadoop-metrics2.properties": hadoop_metrics2_properties,
-    "configuration.xsl": hdfs_raw_files["configuration.xsl"],
-    "log4j.xml": hdfs_raw_files["log4j.xml"],
-    "krb5.conf": hdfs_raw_files["krb5.conf"],
-    "rackinfo.txt": hdfs_raw_files["rackinfo.txt"],
-    "excludes": hdfs_raw_files["excludes"],
-    "hadoop-groups.conf": hdfs_raw_files["hadoop-groups.conf"],
   }
+  config_files.update(args.hdfs_config.configuration.raw_files)
+
   return config_files
 
 def get_job_specific_params(args, job_name):

@@ -40,12 +40,15 @@ if [ -d "$package_dir/lib/native" ]; then
   if [ -z $JAVA_PLATFORM ]; then
     JAVA_PLATFORM=`CLASSPATH=${class_path} ${java} org.apache.hadoop.util.PlatformName | sed -e "s/ /_/g"`
   fi
- 
+
   JAVA_LIBRARY_PATH="$JAVA_LIBRARY_PATH:$package_dir/lib/native/:$package_dir/lib/native/${JAVA_PLATFORM}"
- 
+
   export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$JAVA_LIBRARY_PATH"
   options="$OPTS -Djava.library.path=$JAVA_LIBRARY_PATH"
 fi
 
 %service_env
+if [ -f ./pre.sh ]; then
+  /bin/bash ./pre.sh
+fi
 exec ${java} -cp $class_path $options $params $@ 1>$output_file 2>&1

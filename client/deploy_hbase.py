@@ -81,7 +81,6 @@ def generate_configs(args, host, job_name):
     args.hbase_config.configuration.generated_files["hbase-site.xml"])
   hadoop_metrics_properties = generate_metrics_config(args, host, job_name)
   zk_jaas_conf = generate_zk_jaas_config(args)
-  hbase_raw_files = args.hbase_config.configuration.raw_files
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -89,10 +88,9 @@ def generate_configs(args, host, job_name):
     "hbase-site.xml": hbase_site_xml,
     "hadoop-metrics.properties": hadoop_metrics_properties,
     "jaas.conf": zk_jaas_conf,
-    "configuration.xsl": hbase_raw_files["configuration.xsl"],
-    "log4j.xml": hbase_raw_files["log4j.xml"],
-    "krb5.conf": hbase_raw_files["krb5.conf"],
   }
+  config_files.update(args.hbase_config.configuration.raw_files)
+
   return config_files
 
 def get_job_specific_params(args, job_name):
