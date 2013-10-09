@@ -1,0 +1,33 @@
+{% extends "monitor/hbase_base.html" %}
+{% load extended_filter %}
+
+{% block hbase_content %}
+    <div class="row">
+        <div id="sidebar" class="span1">
+            <ul class="nav nav-list affix">
+              {% for peer_id, graphs in replication_metrics %}
+                <li><a href="#{{peer_id}}">peer_id={{peer_id}}</a></li>
+              {% endfor %}
+            </ul>
+        </div>
+        <div class="span11">
+            {% for peer_id, graphs in replication_metrics%}
+            <section id="{{peer_id}}">
+            <div class="row">
+            {% for graph in graphs %}
+                <div class="span5">
+                    <center>{{graph.title}}</center>
+                    <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh=1000x400" >
+                        <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{tsdb_read_query|pic_heigth}}&png" />
+                    </a>
+                </div>
+                {% if forloop.counter|divisibleby:2 %}
+            </div>
+            <div class="row">
+                {% endif %}
+            {% endfor %}
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
