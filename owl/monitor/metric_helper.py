@@ -22,11 +22,11 @@ def form_perf_counter_endpoint_name(task):
 def form_perf_counter_group_name(task, bean_name):
   return parse_bean_name(bean_name)[0]
 
-def form_percentile_counter_name(group, operationName):
+def form_percentile_counter_name(endpoint, group, operationName):
   percentiles = []
   for suffix in OPERATION_HISTOGRAM_PERCENTILES:
-    percentiles.append('%s-%s_%s' % (group, operationName, suffix))
-  return '|'.join(percentiles)
+    percentiles.append(make_metric_query(endpoint, group, '%s_%s' % (operationName, suffix)))
+  return ''.join(percentiles)
 
 # parse bean name
 # return (service, name)
@@ -230,15 +230,23 @@ def make_operation_metrics_for_tables_in_cluster(cluster):
 def generate_operation_metric_for_regionserver(regionserver):
   task = regionserver.task
   metric = []
+  endpoint = form_perf_counter_endpoint_name(regionserver.task)
   group = 'HBase'
   for operationName in metric_view_config.REGION_SERVER_OPERATION_VIEW_CONFIG:
     counter = []
     # first append operationName
     counter.append(operationName)
     # then, append counter for NumOps
-    counter.append('%s-%s_histogram_num_ops' % (group, operationName))
+    num_ops_counter = {}
+    num_ops_counter['title'] = operationName + '_histogram_num_ops'
+    num_ops_counter['query'] = make_metric_query(endpoint, group, num_ops_counter['title'])
+    counter.append(num_ops_counter)
+
     # lastly, append counters for percentile
-    counter.append(form_percentile_counter_name(group, operationName))
+    percentile_counter = {}
+    percentile_counter['title'] = 'Percentile-Comparision'
+    percentile_counter['query'] = form_percentile_counter_name(endpoint, group, operationName)
+    counter.append(percentile_counter)
 
     metric.append(counter)
   return metric

@@ -274,11 +274,11 @@ def show_table_operation(request, id):
 def show_regionserver_operation(request, id):
   regionserver = dbutil.get_regionserver(id)
   cluster = regionserver.cluster
-  endpoint = metric_helper.form_perf_counter_endpoint_name(regionserver.task)
+  endpoint = dbutil.map_cluster_to_endpoint(cluster.name)
   params = {
     'cluster' : cluster,
     'regionserver' : regionserver,
-    'metrics' : metric_helper.generate_operation_metric_for_regionserver(regionserver),
+    'tsdb_metrics' : metric_helper.generate_operation_metric_for_regionserver(regionserver),
     'endpoint' : endpoint
   }
   return respond(request, 'monitor/hbase_regionserver_operation.html', params)
