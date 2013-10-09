@@ -67,8 +67,7 @@ class CollectorConfig:
         args.service = self.name
         args.cluster = cluster_name
         # Parse cluster config.
-        self.clusters[cluster_name] = deploy_utils.get_service_config(
-            args, {}, False)
+        self.clusters[cluster_name] = deploy_utils.get_service_config(args)
       self.metric_url = config.get(name, "metric_url")
       self.need_analyze = True # analyze for default
       if config.has_option(name, "need_analyze"):

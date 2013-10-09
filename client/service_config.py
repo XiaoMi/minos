@@ -5,6 +5,7 @@ import deploy_config
 import getpass
 import os
 import re
+import socket
 import subprocess
 
 from configobj import ConfigObj
@@ -251,6 +252,7 @@ class ServiceConfig:
         Log.print_critical("base_port %d is NOT a multiple of 100!" %
                             self.base_port)
       self.hosts = {}
+      self.hostnames = {}
       for name, value in job_dict.iteritems():
         reg_expr = HOST_RULE_REGEX.match(name)
         if not reg_expr:
@@ -262,6 +264,10 @@ class ServiceConfig:
                             (name, value))
         ip = reg_expr.group("host")
         self.hosts[host_id] = ip
+        try:
+          self.hostnames[host_id] = socket.gethostbyaddr(ip)[0]
+        except:
+          self.hostnames[host_id] = ip
 
   class Configuration:
     '''
