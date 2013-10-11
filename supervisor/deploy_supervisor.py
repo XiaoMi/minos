@@ -17,8 +17,10 @@ def scp(host, user, passwd, local_file, remote_file):
     child.sendline('yes')
     child.expect('password.*', timeout=30)
     child.sendline(passwd)
+    child.expect(pexpect.EOF)
   elif ret == 1:
     child.sendline(passwd)
+    child.expect(pexpect.EOF)
 
 def remote_exec(host, user, passwd, cmd):
   child = pexpect.spawn('ssh %s@%s "%s"' % (user, host, cmd))
@@ -30,8 +32,10 @@ def remote_exec(host, user, passwd, cmd):
     child.sendline('yes')
     child.expect('password.*', timeout=30)
     child.sendline(passwd)
+    child.expect(pexpect.EOF)
   elif ret == 1:
     child.sendline(passwd)
+    child.expect(pexpect.EOF)
 
 class Config:
   class NodeConfig:
