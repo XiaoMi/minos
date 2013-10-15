@@ -20,6 +20,7 @@ metrics_collector_config = __import__('metrics_collector_config')
 
 metrics_url = metrics_collector_config.metrics_url
 opentsdb_bin_path = metrics_collector_config.opentsdb_bin_path
+opentsdb_extra_args = metrics_collector_config.opentsdb_extra_args
 collect_period = metrics_collector_config.collect_period
 local_data_path = 'metrics_dump.data'
 
@@ -87,22 +88,22 @@ class MetricsCollector:
     # register MAX_REGISTERED_KEYS one time
     while size - offset >= MAX_REGISTERED_KEYS:
       keys_to_add = self.new_keys[offset:offset+MAX_REGISTERED_KEYS]
-      print '%s mkmetric %s' % (opentsdb_bin_path, ' '.join(keys_to_add))
-      os.system('%s mkmetric %s' % (opentsdb_bin_path, ' '.join(keys_to_add)))
+      print '%s mkmetric %s %s' % (opentsdb_bin_path, opentsdb_extra_args, ' '.join(keys_to_add))
+      os.system('%s mkmetric %s %s' % (opentsdb_bin_path, opentsdb_extra_args, ' '.join(keys_to_add)))
       offset += MAX_REGISTERED_KEYS
 
     # register remainings
     if offset < size:
       keys_to_add = self.new_keys[offset:]
-      print '%s mkmetric %s' % (opentsdb_bin_path, ' '.join(keys_to_add))
-      os.system('%s mkmetric %s' % (opentsdb_bin_path, ' '.join(keys_to_add)))
+      print '%s mkmetric %s %s' % (opentsdb_bin_path, opentsdb_extra_args, ' '.join(keys_to_add))
+      os.system('%s mkmetric %s %s' % (opentsdb_bin_path, opentsdb_extra_args, ' '.join(keys_to_add)))
 
     self.new_keys = []
     print "Registered %d metrics cost %f secs" % (size, time.time() - start_time)
 
   def batch_output_to_tsdb(self):
     start_time = time.time()
-    os.system('%s import %s' % (opentsdb_bin_path, local_data_path))
+    os.system('%s import %s %s' % (opentsdb_bin_path, opentsdb_extra_args, local_data_path))
     print "Batch import metrics cost %f secs" % (time.time() - start_time)
 
 if __name__ == '__main__':
