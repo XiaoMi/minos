@@ -82,7 +82,11 @@ def get_tasks_by_service(service_id=None):
   return Task.objects.filter(**filters).all()
 
 def get_task_by_host_and_port(host, port):
-  return Task.objects.get(host = host, port = port)
+  try:
+    return Task.objects.get(host = host, port = port)
+  except:
+    host = socket.gethostbyname(host)
+    return Task.objects.get(host = host, port = port)
 
 def get_task(id):
   try:
