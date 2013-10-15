@@ -7,7 +7,7 @@ Setup opentsdb
 
 Configure for metrics collector
 
-Modify file in config/owl/opentsdb/metrics_collector_config.py
+Modify file in config/opentsdb/metrics_collector_config.py
 
     # metrics's output url in owl
     metrics_url = 'http://127.0.0.1:8000/monitor/metrics'
