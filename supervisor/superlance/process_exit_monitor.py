@@ -9,10 +9,13 @@
 
 import ConfigParser
 import os
+import re
 import subprocess
 import sys
 
 from supervisor import childutils
+
+JOB_INSTANCES_REGEX = re.compile('(?P<job>[A-Za-z_]+)(?P<instance_id>\d+)?$')
 
 def handle_event(payload):
   '''
@@ -39,7 +42,14 @@ def handle_event(payload):
   sys.path.append('%s/../deployment' % os.path.dirname(__file__))
   from rpcinterface import DEFAULT_APP_ROOT
   app_root = parser.get('rpcinterface:deployment', 'app_root', DEFAULT_APP_ROOT)
-  service_root = '%s/%s/%s/%s' % (app_root, service, cluster, job)
+  reg_expr = JOB_INSTANCES_REGEX(job)
+  job = reg_expr.group('job')
+
+  if reg_expr.group('instance_id'):
+    instance_id = reg_expr.group('instance_id')
+    service_root = '%s/%s/%s/%s/%s' % (app_root, service, cluster, job, instance_id)
+  else:
+    service_root = '%s/%s/%s/%s' % (app_root, service, cluster, job)
 
   if not os.path.exists('%s/post.sh' % service_root):
     childutils.pcomm.stderr('No post.sh for %s found.\n' % service)
