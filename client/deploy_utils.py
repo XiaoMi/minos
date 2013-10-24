@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import argparse
 import cStringIO
 import deploy_config
@@ -14,14 +13,15 @@ import socket
 import string
 import subprocess
 import telnetlib
-import tempfile
 import time
 import uuid
 
 from log import Log
-from supervisor_client import SupervisorClient
 from service_config import ServiceConfig
+from supervisor_client import SupervisorClient
 from tank_client import TankClient
+
+HOST_TASK_REGEX = re.compile('(?P<host>\d+)(\.(?P<task>\d+))?$')
 
 SUPERVISOR_SUCCESS = "OK"
 
@@ -40,6 +40,13 @@ class Template(string.Template):
 
 def get_deploy_config():
   return deploy_config.get_deploy_config()
+
+def get_real_instance_id(instance_id):
+  return service_config.get_real_instance_id(instance_id)
+
+def get_http_service_uri(host, base_port, instance_id):
+  return 'http://%s:%d' % (host,
+    service_config.get_base_port(base_port, get_real_instance_id(instance_id)) + 1)
 
 def get_local_package_path_general(path, artifact, version):
   '''
@@ -163,6 +170,7 @@ def upload_package(args, artifact, version):
 
   tank_client = get_tank_client()
   package_info = tank_client.check_package(artifact, checksum)
+
   if not package_info:
     if 200 == tank_client.upload(package_path, artifact, revision):
       Log.print_success("Upload package %s success" % package_path)
@@ -238,17 +246,18 @@ def get_root_dir(service):
     return get_deploy_config().get_impala_root()
   Log.print_critical("Unknow service: %s" % service)
 
-def get_supervisor_client(host, service, cluster, job):
+def get_supervisor_client(host, service, cluster, job, instance_id):
   '''
   A factory method to construct a supervisor client object.
 
-  @param  host    the remote server's host
-  @param  service the service name
-  @param  cluster the cluster name
-  @param  job     the job name
-  @return object  the supervisor client object
+  @param  host        the remote server's host
+  @param  service     the service name
+  @param  cluster     the cluster name
+  @param  job         the job name
+  @param  instance_id the instance id
+  @return object      the supervisor client object
   '''
-  return service_config.get_supervisor_client(host, service, cluster, job)
+  return service_config.get_supervisor_client(host, service, cluster, job, instance_id)
 
 def get_tank_client():
   '''
@@ -421,7 +430,7 @@ def install_service(args, service, service_config, artifact):
     Log.print_critical("Install %s to package server fail" % artifact)
 
 def cleanup_job(service, service_config, host, job_name,
-    cleanup_token, cleanup_script=""):
+    instance_id, cleanup_token, cleanup_script=""):
   '''
   Clean up a task of the specified service and job. Note that cleanup
   requires that the task must be stopped, so users should stop the task
@@ -431,20 +440,22 @@ def cleanup_job(service, service_config, host, job_name,
   @param service_config  the service config object
   @param host            the host of the task
   @param job_name        the job name
+  @param instance_id     the instance id
   @param cleanup_token   the token used to verify cleanup
   @param cleanup_script  the user supplied cleanup script
   @param artifact        the artifact name
   '''
-  Log.print_info("Cleaning up %s on %s" % (job_name, host))
+  task_id = get_real_instance_id(instance_id)
+  Log.print_info("Cleaning up task %d of %s on %s" % (task_id, job_name, host))
   supervisor_client = get_supervisor_client(host, service,
-      service_config.cluster.name, job_name)
+      service_config.cluster.name, job_name, instance_id)
   message = supervisor_client.cleanup(cleanup_token, cleanup_script)
   if SUPERVISOR_SUCCESS == message:
-    Log.print_success("Cleanup %s on %s success" % (job_name, host))
+    Log.print_success("Cleanup task %d of %s on %s success" % (task_id, job_name, host))
   else:
-    Log.print_error("Cleanup %s on %s fail: %s" % (job_name, host, message))
+    Log.print_error("Cleanup task %d of %s on %s fail: %s" % (task_id, job_name, host, message))
 
-def bootstrap_job(args, artifact, service, service_config, host, job_name,
+def bootstrap_job(args, artifact, service, service_config, host, job_name, instance_id,
     cleanup_token, data_dir_indexes='0', bootstrap_script='', **config_files):
   '''
   Bootstrap a task of the specified service and job. Note that before
@@ -457,14 +468,16 @@ def bootstrap_job(args, artifact, service, service_config, host, job_name,
   @param service_config   the service config object
   @param host             the host of the task
   @param job_name         the job name
+  @param instance_id      the instance id
   @param cleanup_token    the token used to verify cleanup
   @param data_dir_indexes the data directory indexes
   @param bootstrap_script the user supplied bootstrap script
   @param config_files     the config files dict
   '''
-  Log.print_info("Bootstrapping %s on %s" % (job_name, host))
+  task_id = get_real_instance_id(instance_id)
+  Log.print_info("Bootstrapping task %d of %s on %s" % (task_id, job_name, host))
   supervisor_client = get_supervisor_client(host, service,
-      service_config.cluster.name, job_name)
+      service_config.cluster.name, job_name, instance_id)
 
   if (service_config.cluster.package_name and service_config.cluster.revision
       and service_config.cluster.timestamp):
@@ -487,13 +500,13 @@ def bootstrap_job(args, artifact, service, service_config, host, job_name,
         bootstrap_script=bootstrap_script, data_dir_indexes=data_dir_indexes,
         **config_files)
   if SUPERVISOR_SUCCESS == message:
-    Log.print_success("Bootstrap %s on %s success" % (job_name, host))
+    Log.print_success("Bootstrap task %d of %s on %s success" % (task_id, job_name, host))
   else:
-    Log.print_critical("Bootstrap %s on %s fail: %s" % (job_name,
+    Log.print_critical("Bootstrap task %d of  %s on %s fail: %s" % (task_id, job_name,
           host, message))
 
 def start_job(args, artifact, service, service_config, host, job_name,
-    start_script, http_url, **config_files):
+    instance_id, start_script, http_url, **config_files):
   '''
   Start the task of specified service and job.
 
@@ -503,13 +516,15 @@ def start_job(args, artifact, service, service_config, host, job_name,
   @param service_config  the service config object
   @param host            the host of the task
   @param job_name        the job name
+  @param instance_id     the instance id
   @param start_script    the user supplied start script
   @param http_url        the task's http entry url
   @param config_files    the config files dict
   '''
-  Log.print_info("Starting %s on %s" % (job_name, host))
+  task_id = get_real_instance_id(instance_id)
+  Log.print_info("Starting task %d of %s on %s" % (task_id, job_name, host))
   supervisor_client = get_supervisor_client(host, service,
-      service_config.cluster.name, job_name)
+      service_config.cluster.name, job_name, instance_id)
 
   if not args.update_config:
     config_files = dict()
@@ -530,11 +545,11 @@ def start_job(args, artifact, service, service_config, host, job_name,
         revision=args.revision, timestamp=args.timestamp, http_url=http_url,
         start_script=start_script, **config_files)
   if SUPERVISOR_SUCCESS == message:
-    Log.print_success("Start %s on %s success" % (job_name, host))
+    Log.print_success("Start task %d of %s on %s success" % (task_id, job_name, host))
   else:
-    Log.print_error("Start %s on %s fail: %s" % (job_name, host, message))
+    Log.print_error("Start task %d of %s on %s fail: %s" % (task_id, job_name, host, message))
 
-def stop_job(service, service_config, host, job_name):
+def stop_job(service, service_config, host, job_name, instance_id):
   '''
   Stop the task of specified service and job.
 
@@ -542,17 +557,19 @@ def stop_job(service, service_config, host, job_name):
   @param service_config  the service config object
   @param host            the host of the task
   @param job_name        the job name
+  @param instance_id     the instance id
   '''
-  Log.print_info("Stopping %s on %s" % (job_name, host))
+  task_id = get_real_instance_id(instance_id)
+  Log.print_info("Stopping task %d of %s on %s" % (task_id, job_name, host))
   supervisor_client = get_supervisor_client(host, service,
-      service_config.cluster.name, job_name)
+      service_config.cluster.name, job_name, instance_id)
   message = supervisor_client.stop()
   if SUPERVISOR_SUCCESS == message:
-    Log.print_success("Stop %s on %s success" % (job_name, host))
+    Log.print_success("Stop task %d of %s on %s success" % (task_id, job_name, host))
   else:
-    Log.print_error("Stop %s on %s fail: %s" % (job_name, host, message))
+    Log.print_error("Stop task %d of %s on %s fail: %s" % (task_id, job_name, host, message))
 
-def show_job(service, service_config, host, job_name):
+def show_job(service, service_config, host, job_name, instance_id):
   '''
   Show the state the task of specified service and job.
 
@@ -560,15 +577,17 @@ def show_job(service, service_config, host, job_name):
   @param service_config  the service config object
   @param host            the host of the task
   @param job_name        the job name
+  @param instance_id     the instance id
   '''
-  Log.print_info("Showing %s on %s" % (job_name, host))
+  task_id = get_real_instance_id(instance_id)
+  Log.print_info("Showing task %d of %s on %s" % (task_id, job_name, host))
   supervisor_client = get_supervisor_client(host, service,
-      service_config.cluster.name, job_name)
+      service_config.cluster.name, job_name, instance_id)
   state = supervisor_client.show()
   if state == 'RUNNING':
-    Log.print_success("%s on %s is %s" % (job_name, host, state))
+    Log.print_success("Task %d of %s on %s is %s" % (task_id, job_name, host, state))
   else:
-    Log.print_error("%s on %s is %s" % (job_name, host, state))
+    Log.print_error("Task %d of %s on %s is %s" % (task_id, job_name, host, state))
 
 def check_service(host, port):
   '''
@@ -582,40 +601,42 @@ def check_service(host, port):
   t.close()
   return True
 
-def check_job_stopped(service, cluster, job, host):
+def check_job_stopped(service, cluster, job, host, instance_id):
   '''
   Check whether a specified task is already stopped or not.
   '''
   supervisor_client = get_supervisor_client(host,
-      service, cluster, job)
+      service, cluster, job, instance_id)
   status = supervisor_client.show()
   return status in STOPPED_STATUS
 
-def wait_for_job_stopping(service, cluster, job, host):
+def wait_for_job_stopping(service, cluster, job, host, instance_id):
   '''
   Wait for a specified job to be stopped.
   '''
-  while not check_job_stopped(service, cluster, job, host):
-    Log.print_warning("Wait for %s on %s stopping" % (job, host))
+  while not check_job_stopped(service, cluster, job, host, instance_id):
+    Log.print_warning("Wait for task %d of %s on %s stopping" % (
+      get_real_instance_id(instance_id), job, host))
     time.sleep(2)
 
-def check_job_started(service, cluster, job, host):
+def check_job_started(service, cluster, job, host, instance_id):
   '''
   Check whether a specified task is already started or not.
   '''
   supervisor_client = get_supervisor_client(host,
-      service, cluster, job)
+      service, cluster, job, instance_id)
   status = supervisor_client.show()
   return status == 'RUNNING'
 
-def wait_for_job_starting(service, cluster, job, host):
+def wait_for_job_starting(service, cluster, job, host, instance_id):
   '''
   Wait for a specified job to be started.
   '''
   # Wait 10 seconds to let supervisord start the task
   time.sleep(10)
-  if not check_job_started(service, cluster, job, host):
-      Log.print_critical('%s on %s start failed' % (job, host))
+  if not check_job_started(service, cluster, job, host, instance_id):
+    Log.print_critical('Task %d of %s on %s start failed' % (
+      get_real_instance_id(instance_id), job, host))
 
 def get_hadoop_package_root(version):
   '''
@@ -702,7 +723,7 @@ def append_to_file(file, content):
   fp.write(content)
   fp.close()
 
-def confirm_rolling_update(id, wait_time):
+def confirm_rolling_update(host_id, instance_id, wait_time):
   '''
   Let the user confirm the rolling update action interactively.
   '''
@@ -712,7 +733,8 @@ def confirm_rolling_update(id, wait_time):
           % wait_time)
       time.sleep(wait_time)
 
-    input = raw_input("Ready to update task %d? (y/n) " % id)
+    input = raw_input("Ready to update task %d on host %d? (y/n) " % (
+      get_real_instance_id(instance_id), host_id))
     if check_input(input):
       return True
   return False
@@ -729,20 +751,50 @@ def generate_random_confirm_token():
   '''
   return str(uuid.uuid4())[0:8]
 
+def add_task_to_map(task_map, host_id, instance_id):
+  if host_id in task_map.keys():
+    if instance_id not in task_map[host_id]:
+      task_map[host_id].append(instance_id)
+  else:
+    task_map[host_id] = [instance_id]
+
+def parse_task(args, hosts):
+  task_map = {}
+  for id in args.task:
+    task_id = int(id)
+    host_id, instance_id = service_config.parse_task_number(task_id, hosts)
+    add_task_to_map(task_map, host_id, instance_id)
+  return task_map
+
 def get_task_by_hostname(hosts, hostnames):
-  tasks = []
+  task_map = {}
   for hostname in hostnames:
     host_ip = socket.gethostbyname(hostname)
     found_task = False
-    for id in hosts.iterkeys():
-      if hosts[id] == host_ip:
-        tasks.append(id)
+    for host_id, host in hosts.iteritems():
+      if host.ip == host_ip:
+        for instance_id in range(host.instance_num):
+          add_task_to_map(task_map, host_id, instance_id)
         found_task = True
         break
-    # return an invalid task id if can't find valid task
+    # raise a ValueError if can't find valid task
     if found_task == False:
       raise ValueError(hostname + ' is not a valid host of cluster, please check your config')
-  return tasks
+  return task_map
+
+def parse_args_host_and_task(args, hosts):
+  # the format of task_map is:
+  # { host_1 : [instance_1,instance_2...], host_2 : [instance_1,instance_2...] }
+  task_map = {}
+  if args.host is not None:
+    task_map.update(get_task_by_hostname(hosts, args.host))
+  elif args.task is not None:
+    task_map.update(parse_task(args, hosts))
+  return task_map
+
+def is_multiple_instances(host_id, hosts):
+  # return False if deploy only one instance on the host
+  return hosts[host_id].instance_num > 1
 
 if __name__ == '__main__':
   test()

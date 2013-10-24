@@ -9,7 +9,6 @@ import urlparse
 
 from log import Log
 
-
 ALL_JOBS = ["resourcemanager", "nodemanager", "historyserver", "proxyserver"]
 
 JOB_MAIN_CLASS = {
@@ -38,10 +37,10 @@ def get_yarn_service_config(args):
         "yarn cluster must depends on a zookeeper clusters: %s" %
         args.yarn_config.cluster.name)
 
-def generate_metrics_config(args, host, job_name):
+def generate_metrics_config(args, host, job_name, instance_id=-1):
   job = args.yarn_config.jobs[job_name]
   supervisor_client = deploy_utils.get_supervisor_client(host, "yarn",
-      args.yarn_config.cluster.name, job_name)
+      args.yarn_config.cluster.name, job_name, instance_id)
 
   ganglia_switch = "# "
   if args.yarn_config.cluster.ganglia_address:
@@ -58,7 +57,7 @@ def generate_metrics_config(args, host, job_name):
   template = deploy_utils.Template(open(local_path, "r").read())
   return template.substitute(config_dict)
 
-def generate_configs(args, host, job_name):
+def generate_configs(args, host, job_name, instance_id):
   core_site_xml = deploy_utils.generate_site_xml(args,
     args.yarn_config.configuration.generated_files["core-site.xml"])
   hdfs_site_xml = deploy_utils.generate_site_xml(args,
@@ -67,7 +66,7 @@ def generate_configs(args, host, job_name):
     args.yarn_config.configuration.generated_files["mapred-site.xml"])
   yarn_site_xml = deploy_utils.generate_site_xml(args,
     args.yarn_config.configuration.generated_files["yarn-site.xml"])
-  hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
+  hadoop_metrics2_properties = generate_metrics_config(args, host, job_name, instance_id)
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -80,11 +79,11 @@ def generate_configs(args, host, job_name):
 
   return config_files
 
-def generate_run_scripts_params(args, host, job_name):
+def generate_run_scripts_params(args, host, job_name, instance_id):
   job = args.yarn_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "yarn", args.yarn_config.cluster.name, job_name)
+      "yarn", args.yarn_config.cluster.name, job_name, instance_id)
 
   artifact_and_version = "hadoop-" + args.yarn_config.cluster.version
 
@@ -146,8 +145,8 @@ def generate_run_scripts_params(args, host, job_name):
 def get_job_specific_params(args, job_name):
   return ""
 
-def generate_start_script(args, host, job_name):
-  script_params = generate_run_scripts_params(args, host, job_name)
+def generate_start_script(args, host, job_name, instance_id):
+  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
   return deploy_utils.create_run_script(
       "%s/start.sh.tmpl" % deploy_utils.get_template_dir(),
       script_params)
@@ -164,14 +163,19 @@ def cleanup(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    for id in args.task or hosts.iterkeys():
-      deploy_utils.cleanup_job("yarn", args.yarn_config,
-          hosts[id], job_name, cleanup_token)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        deploy_utils.cleanup_job("yarn", args.yarn_config,
+          hosts[host_id].ip, job_name, instance_id, cleanup_token)
 
-def bootstrap_job(args, host, job_name, cleanup_token):
+def bootstrap_job(args, host, job_name, instance_id, cleanup_token):
+  # parse the service_config according to the instance_id
+  args.yarn_config.parse_generated_config_files(args, instance_id)
   deploy_utils.bootstrap_job(args, "hadoop", "yarn",
-      args.yarn_config, host, job_name, cleanup_token, '0')
-  start_job(args, host, job_name)
+      args.yarn_config, host, job_name, instance_id, cleanup_token, '0')
+  start_job(args, host, job_name, instance_id)
 
 def bootstrap(args):
   get_yarn_service_config(args)
@@ -179,16 +183,21 @@ def bootstrap(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    for id in args.task or hosts.iterkeys():
-      bootstrap_job(args, hosts[id], job_name, cleanup_token)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        bootstrap_job(args, hosts[host_id].ip, job_name, instance_id, cleanup_token)
 
-def start_job(args, host, job_name):
-  config_files = generate_configs(args, host, job_name)
-  start_script = generate_start_script(args, host, job_name)
-  http_url = 'http://%s:%d' % (host,
-    args.yarn_config.jobs[job_name].base_port + 1)
+def start_job(args, host, job_name, instance_id):
+  # parse the service_config according to the instance_id
+  args.yarn_config.parse_generated_config_files(args, instance_id)
+  config_files = generate_configs(args, host, job_name, instance_id)
+  start_script = generate_start_script(args, host, job_name, instance_id)
+  http_url = deploy_utils.get_http_service_uri(host,
+    args.yarn_config.jobs[job_name].base_port, instance_id)
   deploy_utils.start_job(args, "hadoop", "yarn", args.yarn_config,
-      host, job_name, start_script, http_url, **config_files)
+      host, job_name, instance_id, start_script, http_url, **config_files)
 
 def start(args):
   if not args.skip_confirm:
@@ -197,14 +206,15 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    if args.host is not None:
-      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-    for id in args.task or hosts.iterkeys():
-      start_job(args, hosts[id], job_name)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        start_job(args, hosts[host_id].ip, job_name, instance_id)
 
-def stop_job(args, host, job_name):
+def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("yarn", args.yarn_config,
-      host, job_name)
+      host, job_name, instance_id)
 
 def stop(args):
   if not args.skip_confirm:
@@ -213,10 +223,11 @@ def stop(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    if args.host is not None:
-      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-    for id in args.task or hosts.iterkeys():
-      stop_job(args, hosts[id], job_name)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        stop_job(args, hosts[host_id].ip, job_name, instance_id)
 
 def restart(args):
   if not args.skip_confirm:
@@ -225,28 +236,33 @@ def restart(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    if args.host is not None:
-      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-    for id in args.task or hosts.iterkeys():
-      stop_job(args, hosts[id], job_name)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        stop_job(args, hosts[host_id].ip, job_name, instance_id)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    for id in args.task or hosts.iterkeys():
-      deploy_utils.wait_for_job_stopping("yarn",
-          args.yarn_config.cluster.name, job_name, hosts[id])
-      start_job(args, hosts[id], job_name)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        deploy_utils.wait_for_job_stopping("yarn",
+          args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+        start_job(args, hosts[host_id].ip, job_name, instance_id)
 
 def show(args):
   get_yarn_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.yarn_config.jobs[job_name].hosts
-    if args.host is not None:
-      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-    for id in args.task or hosts.iterkeys():
-      deploy_utils.show_job("yarn", args.yarn_config,
-          hosts[id], job_name)
+    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+    for host_id in args.task_map.keys() or hosts.keys():
+      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+        deploy_utils.show_job("yarn", args.yarn_config,
+          hosts[host_id].ip, job_name, instance_id)
 
 def run_shell(args):
   get_yarn_service_config(args)
@@ -256,6 +272,8 @@ def run_shell(args):
   if not main_class:
     return
 
+  # parse the service_config, suppose the instance_id is -1
+  args.yarn_config.parse_generated_config_files(args)
   core_site_dict = args.yarn_config.configuration.generated_files["core-site.xml"]
   hdfs_site_dict = args.yarn_config.configuration.generated_files["hdfs-site.xml"]
   mapred_site_dict = args.yarn_config.configuration.generated_files["mapred-site.xml"]
@@ -309,8 +327,10 @@ def generate_client_config(args, artifact, version):
 
 def pack(args):
   get_yarn_service_config(args)
+  args.yarn_config.parse_generated_config_files(args)
   version = args.yarn_config.cluster.version
   deploy_utils.make_package_dir(args, "hadoop", version)
+  args.hdfs_config.parse_generated_config_files(args)
   deploy_hdfs.generate_client_config(args, "hadoop", version)
   generate_client_config(args, "hadoop", version)
 
@@ -331,15 +351,17 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.yarn_config.jobs[job_name].hosts
   wait_time = 0
-  for id in hosts.iterkeys():
-    deploy_utils.confirm_rolling_update(id, wait_time)
-    stop_job(args, hosts[id], job_name)
-    deploy_utils.wait_for_job_stopping("yarn",
-        args.yarn_config.cluster.name, job_name, hosts[id])
-    start_job(args, hosts[id], job_name)
-    deploy_utils.wait_for_job_starting("yarn",
-        args.yarn_config.cluster.name, job_name, hosts[id])
-    wait_time = args.time_interval
+  for host_id in hosts.iterkeys():
+    for instance_id in range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
+      stop_job(args, hosts[host_id].ip, job_name, instance_id)
+      deploy_utils.wait_for_job_stopping("yarn",
+        args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+      start_job(args, hosts[host_id].ip, job_name, instance_id)
+      deploy_utils.wait_for_job_starting("yarn",
+        args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+      wait_time = args.time_interval
   Log.print_success("Rolling updating %s success" % job_name)
 
 if __name__ == '__main__':
