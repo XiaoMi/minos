@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import deploy_hdfs
 import deploy_utils
 import deploy_zookeeper
 import os
@@ -34,11 +35,11 @@ SHELL_COMMAND_INFO = {
   "version": ("org.apache.hadoop.hbase.util.VersionInfo", "print the version"),
 }
 
-def generate_metrics_config(args, host, job_name, instance_id=-1):
+def generate_metrics_config(args, host, job_name):
   job = args.hbase_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "hbase", args.hbase_config.cluster.name, job_name, instance_id)
+      "hbase", args.hbase_config.cluster.name, job_name)
 
   ganglia_switch = "# "
   if args.hbase_config.cluster.ganglia_address:
@@ -71,14 +72,14 @@ def generate_zk_jaas_config(args):
       for (key, value) in config_dict.iteritems() if key != config_dict.keys()[0]]))
 
 
-def generate_configs(args, host, job_name, instance_id):
+def generate_configs(args, host, job_name):
   core_site_xml = deploy_utils.generate_site_xml(args,
     args.hbase_config.configuration.generated_files["core-site.xml"])
   hdfs_site_xml = deploy_utils.generate_site_xml(args,
     args.hbase_config.configuration.generated_files["hdfs-site.xml"])
   hbase_site_xml = deploy_utils.generate_site_xml(args,
     args.hbase_config.configuration.generated_files["hbase-site.xml"])
-  hadoop_metrics_properties = generate_metrics_config(args, host, job_name, instance_id)
+  hadoop_metrics_properties = generate_metrics_config(args, host, job_name)
   zk_jaas_conf = generate_zk_jaas_config(args)
 
   config_files = {
@@ -95,11 +96,11 @@ def generate_configs(args, host, job_name, instance_id):
 def get_job_specific_params(args, job_name):
   return ""
 
-def generate_run_scripts_params(args, host, job_name, instance_id):
+def generate_run_scripts_params(args, host, job_name):
   job = args.hbase_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "hbase", args.hbase_config.cluster.name, job_name, instance_id)
+      "hbase", args.hbase_config.cluster.name, job_name)
 
   artifact_and_version = "hbase-" + args.hbase_config.cluster.version
 
@@ -188,8 +189,8 @@ def get_hbase_service_config(args):
         "hdfs cluster must depends on a zookeeper clusters: %s" %
         args.hbase_config.cluster.name)
 
-def generate_start_script(args, host, job_name, instance_id):
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+def generate_start_script(args, host, job_name):
+  script_params = generate_run_scripts_params(args, host, job_name)
   script_params["params"] += " start"
   return deploy_utils.create_run_script(
       "%s/start.sh.tmpl" % deploy_utils.get_template_dir(),
@@ -207,19 +208,14 @@ def cleanup(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.cleanup_job("hbase", args.hbase_config,
-          hosts[host_id].ip, job_name, instance_id, cleanup_token)
+    for id in args.task or hosts.iterkeys():
+      deploy_utils.cleanup_job("hbase", args.hbase_config,
+          hosts[id], job_name, cleanup_token)
 
-def bootstrap_job(args, host, job_name, instance_id, cleanup_token):
-  # parse the service_config according to the instance_id
-  args.hbase_config.parse_generated_config_files(args, instance_id)
+def bootstrap_job(args, host, job_name, cleanup_token):
   deploy_utils.bootstrap_job(args, "hbase", "hbase",
-      args.hbase_config, host, job_name, instance_id, cleanup_token, '0')
-  start_job(args, host, job_name, instance_id)
+      args.hbase_config, host, job_name, cleanup_token, '0')
+  start_job(args, host, job_name)
 
 def bootstrap(args):
   get_hbase_service_config(args)
@@ -228,21 +224,16 @@ def bootstrap(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        bootstrap_job(args, hosts[host_id].ip, job_name, instance_id, cleanup_token)
+    for id in args.task or hosts.iterkeys():
+      bootstrap_job(args, hosts[id], job_name, cleanup_token)
 
-def start_job(args, host, job_name, instance_id):
-  # parse the service_config according to the instance_id
-  args.hbase_config.parse_generated_config_files(args, instance_id)
-  config_files = generate_configs(args, host, job_name, instance_id)
-  start_script = generate_start_script(args, host, job_name, instance_id)
-  http_url = deploy_utils.get_http_service_uri(host,
-    args.hbase_config.jobs[job_name].base_port, instance_id)
+def start_job(args, host, job_name):
+  config_files = generate_configs(args, host, job_name)
+  start_script = generate_start_script(args, host, job_name)
+  http_url = 'http://%s:%d' % (host,
+    args.hbase_config.jobs[job_name].base_port + 1)
   deploy_utils.start_job(args, "hbase", "hbase", args.hbase_config,
-      host, job_name, instance_id, start_script, http_url, **config_files)
+      host, job_name, start_script, http_url, **config_files)
 
 def start(args):
   if not args.skip_confirm:
@@ -251,15 +242,14 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      start_job(args, hosts[id], job_name)
 
-def stop_job(args, host, job_name, instance_id):
+def stop_job(args, host, job_name):
   deploy_utils.stop_job("hbase", args.hbase_config,
-      host, job_name, instance_id)
+      host, job_name)
 
 def stop(args):
   if not args.skip_confirm:
@@ -268,11 +258,10 @@ def stop(args):
 
   for job_name in args.job or reversed(ALL_JOBS):
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      stop_job(args, hosts[id], job_name)
 
 def restart(args):
   if not args.skip_confirm:
@@ -281,33 +270,28 @@ def restart(args):
 
   for job_name in args.job or reversed(ALL_JOBS):
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      stop_job(args, hosts[id], job_name)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.wait_for_job_stopping("hbase",
-          args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+    for id in args.task or hosts.iterkeys():
+      deploy_utils.wait_for_job_stopping("hbase",
+          args.hbase_config.cluster.name, job_name, hosts[id])
+      start_job(args, hosts[id], job_name)
 
 def show(args):
   get_hbase_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.show_job("hbase", args.hbase_config,
-          hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      deploy_utils.show_job("hbase", args.hbase_config,
+          hosts[id], job_name)
 
 def run_shell(args):
   get_hbase_service_config(args)
@@ -317,8 +301,6 @@ def run_shell(args):
   if not main_class:
     return
 
-  # parse the service_config, suppose the instance_id is -1
-  args.hbase_config.parse_generated_config_files(args)
   core_site_dict = args.hbase_config.configuration.generated_files["core-site.xml"]
   hdfs_site_dict = args.hbase_config.configuration.generated_files["hdfs-site.xml"]
   hbase_site_dict = args.hbase_config.configuration.generated_files["hbase-site.xml"]
@@ -367,7 +349,7 @@ def update_hbase_env_sh(args, artifact, version):
 def generate_client_config(args, artifact, version):
   config_path = "%s/%s/%s-%s/conf" % (args.package_root,
       args.cluster, artifact, version)
-  master_host = args.hbase_config.jobs["master"].hosts[0].ip
+  master_host = args.hbase_config.jobs["master"].hosts[0]
   config_path = "%s/%s/%s-%s/conf" % (args.package_root,
       args.cluster, artifact, version)
   deploy_utils.write_file("%s/hbase-site.xml" % config_path,
@@ -389,7 +371,6 @@ def generate_client_config(args, artifact, version):
 
 def pack(args):
   get_hbase_service_config(args)
-  args.hbase_config.parse_generated_config_files(args)
   version = args.hbase_config.cluster.version
   deploy_utils.make_package_dir(args, "hbase", version)
   generate_client_config(args, "hbase", version)
@@ -455,24 +436,24 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.hbase_config.jobs[job_name].hosts
   wait_time = 0
-  for host_id in hosts.iterkeys():
-    for instance_id in range(hosts[host_id].instance_num):
-      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-      if not args.skip_confirm:
-        deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
 
-      if args.vacate_rs:
-        vacate_region_server(args, hosts[host_id].ip)
-      stop_job(args, hosts[host_id].ip, job_name, instance_id)
-      deploy_utils.wait_for_job_stopping("hbase",
-        args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, job_name, instance_id)
-      deploy_utils.wait_for_job_starting("hbase",
-        args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+  for id in hosts.iterkeys():
+    if not args.skip_confirm:
+      deploy_utils.confirm_rolling_update(id, wait_time)
 
-      if args.vacate_rs:
-        recover_region_server(args, hosts[host_id].ip)
-      wait_time = args.time_interval
+    if args.vacate_rs:
+       vacate_region_server(args, hosts[id])
+
+    stop_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_stopping("hbase",
+        args.hbase_config.cluster.name, job_name, hosts[id])
+    start_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_starting("hbase",
+        args.hbase_config.cluster.name, job_name, hosts[id])
+
+    if args.vacate_rs:
+      recover_region_server(args, hosts[id])
+    wait_time = args.time_interval
 
   if args.vacate_rs:
     balance_switch(args, True)

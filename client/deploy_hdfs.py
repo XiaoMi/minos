@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import deploy_utils
-import service_config
 import subprocess
 import sys
 import time
 
 from log import Log
+
 
 ALL_JOBS = ["journalnode", "zkfc", "namenode", "datanode"]
 
@@ -42,11 +42,11 @@ SHELL_COMMAND_INFO = {
       "get the groups which users belong to"),
 }
 
-def generate_metrics_config(args, host, job_name, instance_id=-1):
+def generate_metrics_config(args, host, job_name):
   job = args.hdfs_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "hdfs", args.hdfs_config.cluster.name, job_name, instance_id)
+      "hdfs", args.hdfs_config.cluster.name, job_name)
 
   ganglia_switch = "# "
   if args.hdfs_config.cluster.ganglia_address:
@@ -63,12 +63,12 @@ def generate_metrics_config(args, host, job_name, instance_id=-1):
   template = deploy_utils.Template(open(local_path, "r").read())
   return template.substitute(config_dict)
 
-def generate_configs(args, host, job_name, instance_id):
+def generate_configs(args, host, job_name):
   core_site_xml = deploy_utils.generate_site_xml(args,
     args.hdfs_config.configuration.generated_files["core-site.xml"])
   hdfs_site_xml = deploy_utils.generate_site_xml(args,
     args.hdfs_config.configuration.generated_files["hdfs-site.xml"])
-  hadoop_metrics2_properties = generate_metrics_config(args, host, job_name, instance_id)
+  hadoop_metrics2_properties = generate_metrics_config(args, host, job_name)
 
   config_files = {
     "core-site.xml": core_site_xml,
@@ -82,11 +82,11 @@ def generate_configs(args, host, job_name, instance_id):
 def get_job_specific_params(args, job_name):
   return ""
 
-def generate_run_scripts_params(args, host, job_name, instance_id):
+def generate_run_scripts_params(args, host, job_name):
   job = args.hdfs_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "hdfs", args.hdfs_config.cluster.name, job_name, instance_id)
+      "hdfs", args.hdfs_config.cluster.name, job_name)
 
   artifact_and_version = "hadoop-" + args.hdfs_config.cluster.version
 
@@ -156,9 +156,9 @@ def get_hdfs_service_config(args):
   args.hdfs_config.jobs["zkfc"].hosts = namenode_hosts.copy()
   args.skip_gen_config_files = False
 
-def generate_bootstrap_script(args, host, job_name, instance_id, active):
+def generate_bootstrap_script(args, host, job_name, active):
   option = str()
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+  script_params = generate_run_scripts_params(args, host, job_name)
   script_params['ha_status'] = 'standby'
   if job_name == "zkfc":
     if active:
@@ -175,8 +175,8 @@ def generate_bootstrap_script(args, host, job_name, instance_id, active):
       '%s/bootstrap_hdfs.sh.tmpl' % deploy_utils.get_template_dir(),
       script_params)
 
-def generate_cleanup_script(args, host, job_name, instance_id, active):
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+def generate_cleanup_script(args, host, job_name, active):
+  script_params = generate_run_scripts_params(args, host, job_name)
   script_params['params'] += " -clearZK"
   if active:
     script_params['ha_status'] = 'active'
@@ -186,8 +186,8 @@ def generate_cleanup_script(args, host, job_name, instance_id, active):
       '%s/cleanup_hdfs.sh.tmpl' % deploy_utils.get_template_dir(),
       script_params)
 
-def generate_start_script(args, host, job_name, instance_id):
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+def generate_start_script(args, host, job_name):
+  script_params = generate_run_scripts_params(args, host, job_name)
   return deploy_utils.create_run_script(
       '%s/start.sh.tmpl' % deploy_utils.get_template_dir(),
       script_params)
@@ -195,19 +195,17 @@ def generate_start_script(args, host, job_name, instance_id):
 def check_journalnode_all_started(args):
   job = args.hdfs_config.jobs["journalnode"]
   hosts = job.hosts
-  for host_id in hosts.iterkeys():
-    for instance_id in range(hosts[host_id].instance_num):
-      if not deploy_utils.check_service(hosts[host_id].ip,
-        service_config.get_base_port(job.base_port, instance_id)):
-        return False
+  for id in hosts.iterkeys():
+    if not deploy_utils.check_service(hosts[id], job.base_port):
+      return False
   return True
 
-def get_data_dir_indexes(args, job_name, host, instance_id):
+def get_data_dir_indexes(args, job_name, host):
   if job_name != "datanode":
     return "0"
   else:
     supervisor_client = deploy_utils.get_supervisor_client(host,
-        "hdfs", args.hdfs_config.cluster.name, job_name, instance_id)
+        "hdfs", args.hdfs_config.cluster.name, job_name)
     data_dirs = supervisor_client.get_available_data_dirs()
     return ",".join([str(i) for i in range(len(data_dirs))])
 
@@ -215,12 +213,12 @@ def install(args):
   get_hdfs_service_config(args)
   deploy_utils.install_service(args, "hdfs", args.hdfs_config, "hadoop")
 
-def cleanup_job(args, host, job_name, instance_id, active, cleanup_token):
+def cleanup_job(args, host, job_name, active, cleanup_token):
   cleanup_script = str()
   if job_name == "zkfc":
-    cleanup_script = generate_cleanup_script(args, host, job_name, instance_id, active)
+    cleanup_script = generate_cleanup_script(args, host, job_name, active)
   deploy_utils.cleanup_job("hdfs", args.hdfs_config,
-      host, job_name, instance_id, cleanup_token, cleanup_script)
+      host, job_name, cleanup_token, cleanup_script)
 
 def cleanup(args):
   get_hdfs_service_config(args)
@@ -231,31 +229,25 @@ def cleanup(args):
   first = True
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
+    for id in args.task or hosts.iterkeys():
+      cleanup_job(args, hosts[id], job_name, first, cleanup_token)
+      if job_name == "zkfc":
+        first = False
 
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        cleanup_job(args, hosts[host_id].ip, job_name, instance_id, first, cleanup_token)
-        if job_name == "zkfc":
-          first = False
-
-def bootstrap_job(args, host, job_name, instance_id, active, cleanup_token):
-  # parse the service_config according to the instance_id
-  args.hdfs_config.parse_generated_config_files(args, instance_id)
-  data_dir_indexes = get_data_dir_indexes(args, job_name, host, instance_id)
-  config_files = generate_configs(args, host, job_name, instance_id)
+def bootstrap_job(args, host, job_name, active, cleanup_token):
+  data_dir_indexes = get_data_dir_indexes(args, job_name, host)
+  config_files = generate_configs(args, host, job_name)
   if job_name == "namenode" or job_name == "zkfc":
-    bootstrap_script = generate_bootstrap_script(args, host, job_name, instance_id, active)
+    bootstrap_script = generate_bootstrap_script(args, host, job_name, active)
     deploy_utils.bootstrap_job(args, "hadoop", "hdfs", args.hdfs_config,
-        host, job_name, instance_id, cleanup_token, data_dir_indexes, bootstrap_script,
+        host, job_name, cleanup_token, data_dir_indexes, bootstrap_script,
         **config_files)
   else:
     deploy_utils.bootstrap_job(args, "hadoop", "hdfs", args.hdfs_config,
-        host, job_name, instance_id, cleanup_token, data_dir_indexes, '', **config_files)
+        host, job_name, cleanup_token, data_dir_indexes, '', **config_files)
   # start job after bootstrapping
   args.skip_gen_config_files = True
-  start_job(args, host, job_name, instance_id)
+  start_job(args, host, job_name)
 
 def bootstrap(args):
   get_hdfs_service_config(args)
@@ -269,30 +261,26 @@ def bootstrap(args):
       while not check_journalnode_all_started(args):
         Log.print_warning("Wait for journalnode starting")
         time.sleep(2)
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        if job_name == "namenode" and not first:
-          while not deploy_utils.check_service(hosts[0].ip,
-              args.hdfs_config.jobs["namenode"].base_port):
-            Log.print_warning("Wait for active namenode starting")
-            time.sleep(2)
 
-        bootstrap_job(args, hosts[host_id].ip, job_name, instance_id, first, cleanup_token)
-        first = False
+    for id in args.task or hosts.iterkeys():
+      if job_name == "namenode" and not first:
+        while not deploy_utils.check_service(hosts[0],
+            args.hdfs_config.jobs["namenode"].base_port):
+          Log.print_warning("Wait for active namenode starting")
+          time.sleep(2)
 
-def start_job(args, host, job_name, instance_id):
-  # parse the service_config according to the instance_id
-  args.hdfs_config.parse_generated_config_files(args, instance_id)
-  start_script = generate_start_script(args, host, job_name, instance_id)
-  http_url = deploy_utils.get_http_service_uri(host,
-    args.hdfs_config.jobs[job_name].base_port, instance_id)
+      bootstrap_job(args, hosts[id], job_name, first, cleanup_token)
+      first = False
+
+def start_job(args, host, job_name):
+  start_script = generate_start_script(args, host, job_name)
+  http_url = 'http://%s:%d' % (host,
+    args.hdfs_config.jobs[job_name].base_port + 1)
   config_files = dict()
   if not args.skip_gen_config_files:
-    config_files = generate_configs(args, host, job_name, instance_id)
+    config_files = generate_configs(args, host, job_name)
   deploy_utils.start_job(args, "hadoop", "hdfs", args.hdfs_config,
-      host, job_name, instance_id, start_script, http_url, **config_files)
+      host, job_name, start_script, http_url, **config_files)
 
 def start(args):
   if not args.skip_confirm:
@@ -301,15 +289,14 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      start_job(args, hosts[id], job_name)
 
-def stop_job(args, host, job_name, instance_id):
+def stop_job(args, host, job_name):
   deploy_utils.stop_job("hdfs", args.hdfs_config,
-      host, job_name, instance_id)
+      host, job_name)
 
 def stop(args):
   if not args.skip_confirm:
@@ -318,11 +305,10 @@ def stop(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      stop_job(args, hosts[id], job_name)
 
 def restart(args):
   if not args.skip_confirm:
@@ -331,33 +317,28 @@ def restart(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      stop_job(args, hosts[id], job_name)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.wait_for_job_stopping("hdfs",
-          args.hdfs_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+    for id in args.task or hosts.iterkeys():
+      deploy_utils.wait_for_job_stopping("hdfs",
+          args.hdfs_config.cluster.name, job_name, hosts[id])
+      start_job(args, hosts[id], job_name)
 
 def show(args):
   get_hdfs_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.show_job("hdfs", args.hdfs_config, hosts[host_id].ip,
-          job_name, instance_id)
+    if args.host is not None:
+      args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
+    for id in args.task or hosts.iterkeys():
+      deploy_utils.show_job("hdfs", args.hdfs_config,
+          hosts[id], job_name)
 
 def run_shell(args):
   get_hdfs_service_config(args)
@@ -366,8 +347,7 @@ def run_shell(args):
       args, SHELL_COMMAND_INFO)
   if not main_class:
     return
-  # parse the service_config, suppose the instance_id is -1
-  args.hdfs_config.parse_generated_config_files(args)
+
   core_site_dict = args.hdfs_config.configuration.generated_files["core-site.xml"]
   hdfs_site_dict = args.hdfs_config.configuration.generated_files["hdfs-site.xml"]
 
@@ -412,7 +392,7 @@ def generate_client_config(args, artifact, version):
       deploy_utils.generate_site_xml(args,
         args.hdfs_config.configuration.generated_files["hdfs-site.xml"]))
   deploy_utils.write_file("%s/hadoop-metrics2.properties" % config_path,
-      generate_metrics_config(args, args.hdfs_config.jobs["namenode"].hosts[0].ip,
+      generate_metrics_config(args, args.hdfs_config.jobs["namenode"].hosts[0],
         "namenode"))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
       args.hdfs_config.configuration.raw_files["krb5.conf"])
@@ -427,8 +407,6 @@ def update_hadoop_env_sh(args, artifact, version, opts_name):
 
 def pack(args):
   get_hdfs_service_config(args)
-  args.hdfs_config.parse_generated_config_files(args)
-
   version = args.hdfs_config.cluster.version
   deploy_utils.make_package_dir(args, "hadoop", version)
   generate_client_config(args, "hadoop", version)
@@ -450,17 +428,15 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.hdfs_config.jobs[job_name].hosts
   wait_time = 0
-  for host_id in hosts.iterkeys():
-    for instance_id in range(hosts[host_id].instance_num):
-      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-      deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
-      stop_job(args, hosts[host_id].ip, job_name, instance_id)
-      deploy_utils.wait_for_job_stopping("hdfs",
-        args.hdfs_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, job_name, instance_id)
-      deploy_utils.wait_for_job_starting("hdfs",
-        args.hdfs_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      wait_time = args.time_interval
+  for id in hosts.iterkeys():
+    deploy_utils.confirm_rolling_update(id, wait_time)
+    stop_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_stopping("hdfs",
+        args.hdfs_config.cluster.name, job_name, hosts[id])
+    start_job(args, hosts[id], job_name)
+    deploy_utils.wait_for_job_starting("hdfs",
+        args.hdfs_config.cluster.name, job_name, hosts[id])
+    wait_time = args.time_interval
   Log.print_success("Rolling updating %s success" % job_name)
 
 if __name__ == '__main__':

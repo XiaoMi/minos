@@ -34,7 +34,7 @@ def add_service_arguments(parser):
       help="The list of jobs to be manipulated, separated by space. If empty, "
            "all jobs would be manipulated.")
   task_group = parser.add_mutually_exclusive_group()
-  task_group.add_argument("--task", type=str, nargs="+",
+  task_group.add_argument("--task", type=int, nargs="+",
       help="The list of tasks to be manipulated, separated by space. If task "
            "and host are all empty, all tasks would be manipulated. "
            "Option --task is exclusive with --host.")

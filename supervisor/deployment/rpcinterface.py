@@ -39,87 +39,71 @@ class DeploymentRPCInterface:
     self.download_package_uri = config.get('download_package_uri')
     self.get_latest_package_info_uri = config.get('get_latest_package_info_uri')
 
-  def get_run_dir(self, service, cluster, job, instance_id):
+  def get_run_dir(self, service, cluster, job):
     '''
     Get the run directory of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's run root directory
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's run root directory
     '''
     app_root = self.global_config.get('app_root', DEFAULT_APP_ROOT)
-    if instance_id == -1:
-      return '%s/%s/%s/%s' % (app_root, service, cluster, job)
-    else:
-      return '%s/%s/%s/%s/%s' % (app_root, service, cluster, job, instance_id)
+    return '%s/%s/%s/%s' % (app_root, service, cluster, job)
 
-  def get_log_dir(self, service, cluster, job, instance_id):
+  def get_log_dir(self, service, cluster, job):
     '''
     Get the log directory of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's log root directory
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's log root directory
     '''
     log_root = self.global_config.get('log_root', DEFAULT_LOG_ROOT)
-    if instance_id == -1:
-      return '%s/%s/%s/%s' % (log_root, service, cluster, job)
-    else:
-      return '%s/%s/%s/%s/%s' % (log_root, service, cluster, job, instance_id)
+    return '%s/%s/%s/%s' % (log_root, service, cluster, job)
 
-  def get_stdout_dir(self, service, cluster, job, instance_id):
+  def get_stdout_dir(self, service, cluster, job):
     '''
     Get the stdout directory of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's log root directory
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's log root directory
     '''
-    run_dir = self.get_run_dir(service, cluster, job, instance_id)
+    run_dir = self.get_run_dir(service, cluster, job)
     return '%s/stdout' % run_dir
 
-  def get_available_data_dirs(self, service, cluster, job, instance_id):
+  def get_available_data_dirs(self, service, cluster, job):
     '''
     Get all the available data directories that the specified job may use
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return list       all the available data root directories
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return list     all the available data root directories
     '''
     data_dirs = self.global_config.get('data_dirs', DEFAULT_DATA_DIRS)
-    if instance_id == -1:
-      return ['%s/%s/%s/%s' % (data_dir, service, cluster, job)
-        for data_dir in data_dirs.split(',')
-      ]
-    else:
-      return ['%s/%s/%s/%s/%s' % (data_dir, service, cluster, job, instance_id)
-        for data_dir in data_dirs.split(',')
-      ]
+    return ['%s/%s/%s/%s' % (data_dir, service, cluster, job)
+      for data_dir in data_dirs.split(',')
+    ]
 
-  def get_data_dirs(self, service, cluster, job, instance_id):
+  def get_data_dirs(self, service, cluster, job):
     '''
     Get all the data directories of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return list       the job's data root directories
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return list     the job's data root directories
     '''
-    file_name = '%s/%s' % (self.get_run_dir(service, cluster, job, instance_id),
+    file_name = '%s/%s' % (self.get_run_dir(service, cluster, job),
         JOB_RUN_CONFIG)
     if not os.path.exists(file_name):
       return 'You should bootstrapped the job first'
 
-    data_dirs = self.get_available_data_dirs(service, cluster, job, instance_id)
+    data_dirs = self.get_available_data_dirs(service, cluster, job)
     run_config = ConfigParser.SafeConfigParser()
     run_config.read([file_name])
     data_dir_indexes = run_config.get('run_info', 'data_dir_indexes')
@@ -128,29 +112,27 @@ class DeploymentRPCInterface:
       job_data_dirs.append(data_dirs[int(i)])
     return job_data_dirs
 
-  def get_package_dir(self, service, cluster, job, instance_id):
+  def get_package_dir(self, service, cluster, job):
     '''
     Get the current package directory of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's package root directory(symbol link)
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's package root directory(symbol link)
     '''
-    return '%s/package' % self.get_run_dir(service, cluster, job, instance_id)
+    return '%s/package' % self.get_run_dir(service, cluster, job)
 
-  def get_real_package_dir(self, service, cluster, job, instance_id):
+  def get_real_package_dir(self, service, cluster, job):
     '''
     Get the current package directory real path of the specified job
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's package root directory(real path)
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's package root directory(real path)
     '''
-    return os.readlink(self.get_package_dir(service, cluster, job, instance_id))
+    return os.readlink(self.get_package_dir(service, cluster, job))
 
   def get_current_package_dir(self, service, cluster):
     '''
@@ -163,17 +145,16 @@ class DeploymentRPCInterface:
     package_root = self.global_config.get('package_root')
     return '%s/%s/%s/current' % (package_root, service, cluster)
 
-  def get_cleanup_token(self, service, cluster, job, instance_id):
+  def get_cleanup_token(self, service, cluster, job):
     '''
     Get the token used to do cleanuping
 
-    @param service     the server name
-    @param cluster     the cluster name
-    @param job         the job name
-    @param instance_id the instance id
-    @return string     the job's cleanup token
+    @param service   the server name
+    @param cluster   the cluster name
+    @param job       the job name
+    @return string   the job's cleanup token
     '''
-    file_name = '%s/%s' % (self.get_run_dir(service, cluster, job, instance_id),
+    file_name = '%s/%s' % (self.get_run_dir(service, cluster, job),
         JOB_RUN_CONFIG)
     if not os.path.exists(file_name):
       return 'You should bootstrap the job first'
@@ -182,16 +163,15 @@ class DeploymentRPCInterface:
     run_config.read([file_name])
     return run_config.get('run_info', 'cleanup_token')
 
-  def bootstrap(self, service, cluster, job, instance_id, config_dict):
+  def bootstrap(self, service, cluster, job, config_dict):
     '''
     Bootstrap the specified job
 
-    @param service      the server name
-    @param cluster      the cluster name
-    @param job          the job name
-    @param instance_id  the instance id
-    @param config_dict  the config information dictionary
-    @return string      'OK' on success, otherwise, the error message
+    @param service     the server name
+    @param cluster     the cluster name
+    @param job         the job name
+    @param config_dict the config information dictionary
+    @return string     'OK' on success, otherwise, the error message
 
     Note: config_dict must contain the following item:
       1. artifact
@@ -218,18 +198,17 @@ class DeploymentRPCInterface:
         },
       }
     '''
-    return self._do_bootstrap(service, cluster, job, instance_id, **config_dict)
+    return self._do_bootstrap(service, cluster, job, **config_dict)
 
-  def start(self, service, cluster, job, instance_id, config_dict):
+  def start(self, service, cluster, job, config_dict):
     '''
     Start the specified job
 
-    @param service      the server name
-    @param cluster      the cluster name
-    @param job          the job name
-    @param instance_id  the instance id
-    @param config_dict  the config information dictionary
-    @return string      'OK' on success, otherwise, the error message
+    @param service     the server name
+    @param cluster     the cluster name
+    @param job         the job name
+    @param config_dict the config information dictionary
+    @return string     'OK' on success, otherwise, the error message
 
     Note: config_dict must contain the following item:
       1. start.sh
@@ -254,33 +233,31 @@ class DeploymentRPCInterface:
         'http_url': 'http://10.235.3.67:11201',
       }
     '''
-    return self._do_start(service, cluster, job, instance_id, **config_dict)
+    return self._do_start(service, cluster, job, **config_dict)
 
-  def stop(self, service, cluster, job, instance_id, config_dict):
+  def stop(self, service, cluster, job, config_dict):
     '''
     Stop the specified job
 
-    @param service      the server name
-    @param cluster      the cluster name
-    @param job          the job name
-    @param instance_id  the instance id
-    @param config_dict  the config information dictionary
-    @return string      'OK' on success, otherwise, the error message
+    @param service     the server name
+    @param cluster     the cluster name
+    @param job         the job name
+    @param config_dict the config information dictionary
+    @return string     'OK' on success, otherwise, the error message
 
     Note: config_dict is not used currently, reserved for extendibility
     '''
-    return self._do_stop(service, cluster, job, instance_id, **config_dict)
+    return self._do_stop(service, cluster, job, **config_dict)
 
-  def cleanup(self, service, cluster, job, instance_id, config_dict):
+  def cleanup(self, service, cluster, job, config_dict):
     '''
     Cleanup the specified job's data/log directories
 
-    @param service      the server name
-    @param cluster      the cluster name
-    @param job          the job name
-    @param instance_id  the instance id
-    @param config_dict  the config information dictionary
-    @return string      'OK' on success, otherwise, the error message
+    @param service     the server name
+    @param cluster     the cluster name
+    @param job         the job name
+    @param config_dict the config information dictionary
+    @return string     'OK' on success, otherwise, the error message
 
     Note: config_dict may contain the following item:
       1. cleanup_token: [optional] token used to do verification
@@ -291,23 +268,22 @@ class DeploymentRPCInterface:
         'cleanup.sh': $cleanup_script,
       }
     '''
-    return self._do_cleanup(service, cluster, job, instance_id, **config_dict)
+    return self._do_cleanup(service, cluster, job, **config_dict)
 
-  def show(self, service, cluster, job, instance_id, config_dict):
+  def show(self, service, cluster, job, config_dict):
     '''
     Get the specified job's current status
-    @param service      the server name
-    @param cluster      the cluster name
-    @param job          the job name
-    @param instance_id  the instance id
-    @param config_dict  the config information dictionary
-    @return string      the process status
-    Possible values of  process status:
-      RUNNING STARTING  BACKOFF STOPPING EXITED FATAL UNKNOWN
+    @param service     the server name
+    @param cluster     the cluster name
+    @param job         the job name
+    @param config_dict the config information dictionary
+    @return string     the process status
+    Possible values of process status:
+      RUNNING STARTING BACKOFF STOPPING EXITED FATAL UNKNOWN
 
     Note: config_dict is not used currently, reserved for extendibility
     '''
-    return self._do_show(service, cluster, job, instance_id, **config_dict)
+    return self._do_show(service, cluster, job, **config_dict)
 
   def _get_package_uri(self, artifact, revision, timestamp, package_name):
     return '%s/%s/%s/%s-%s/%s' % (self.package_server,
@@ -339,11 +315,8 @@ class DeploymentRPCInterface:
         os.remove(file_path)
       self._write_file(file_path, content)
 
-  def _get_process_name(self, service, cluster, job, instance_id):
-    if instance_id == -1:
-      return '%s--%s--%s' % (service, cluster, job)
-    else:
-      return '%s--%s--%s%d' % (service, cluster, job, instance_id)
+  def _get_process_name(self, service, cluster, job):
+    return '%s--%s--%s' % (service, cluster, job)
 
   def _cleanup_dir(self, path):
     cmd = 'rm -rf %s/*' % path
@@ -356,8 +329,8 @@ class DeploymentRPCInterface:
     lists = os.listdir(path)
     return len(lists) == 0
 
-  def _check_bootstrapped(self, service, cluster, job, instance_id):
-    run_dir = self.get_run_dir(service, cluster, job, instance_id)
+  def _check_bootstrapped(self, service, cluster, job):
+    run_dir = self.get_run_dir(service, cluster, job)
     return os.path.exists('%s/%s' % (run_dir, JOB_RUN_CONFIG))
 
   def _get_latest_package_info(self, artifact):
@@ -373,7 +346,7 @@ class DeploymentRPCInterface:
       info_fp.close()
       return None
 
-  def _make_package_dir(self, artifact, service, cluster, job, instance_id,
+  def _make_package_dir(self, artifact, service, cluster, job,
     revision, timestamp, package_name):
     # Check if the tarball is already downloaded, if not, download it
     package_path = '%s/%s/%s/%s-%s/%s' % (self.global_config.get('package_root'),
@@ -398,7 +371,7 @@ class DeploymentRPCInterface:
     os.symlink(package_dir, current_dir)
 
     # Link the package dir to the run dir
-    symbol_package_dir = self.get_package_dir(service, cluster, job, instance_id)
+    symbol_package_dir = self.get_package_dir(service, cluster, job)
     if os.path.lexists(symbol_package_dir):
       os.unlink(symbol_package_dir)
     os.symlink(package_dir, symbol_package_dir)
@@ -412,23 +385,23 @@ class DeploymentRPCInterface:
     run_config.write(fp)
     fp.close()
 
-  def _prepare_run_env(self, service, cluster, job, instance_id, **config_dict):
+  def _prepare_run_env(self, service, cluster, job, **config_dict):
     artifact = config_dict.get('artifact')
     if not artifact:
       return 'Invalid config_dict: can\'t find artifact'
 
     # Create run dirs
-    run_dir = self.get_run_dir(service, cluster, job, instance_id)
+    run_dir = self.get_run_dir(service, cluster, job)
     if not os.path.exists(run_dir):
       os.makedirs(run_dir)
 
     # Create stdout dir
-    stdout_dir = self.get_stdout_dir(service, cluster, job, instance_id)
+    stdout_dir = self.get_stdout_dir(service, cluster, job)
     if not os.path.exists(stdout_dir):
       os.makedirs(stdout_dir)
 
     # Create and link log dir to the run dir
-    log_dir = self.get_log_dir(service, cluster, job, instance_id)
+    log_dir = self.get_log_dir(service, cluster, job)
     if os.path.exists(log_dir):
       if not self._check_dir_empty(log_dir):
         return 'The log dir %s is not empty, please do cleanup first' % log_dir
@@ -442,10 +415,7 @@ class DeploymentRPCInterface:
     data_dirs = self.global_config.get('data_dirs', DEFAULT_DATA_DIRS).split(',')
     data_dir_indexes  = (config_dict.get('data_dir_indexes') or '0')
     for i in data_dir_indexes.split(','):
-      if instance_id == -1:
-        data_dir = '%s/%s/%s/%s' % (data_dirs[int(i)], service, cluster, job)
-      else:
-        data_dir = '%s/%s/%s/%s/%s' % (data_dirs[int(i)], service, cluster, job, instance_id)
+      data_dir = '%s/%s/%s/%s' % (data_dirs[int(i)], service, cluster, job)
       if os.path.exists(data_dir):
         if not self._check_dir_empty(data_dir):
           return 'The data dir %s is not empty, please do cleanup first' % data_dir
@@ -478,7 +448,7 @@ class DeploymentRPCInterface:
 
     # Write the job's run.cfg
     package_dir = self._make_package_dir(artifact, service, cluster, job,
-        instance_id, revision, timestamp, package_name)
+        revision, timestamp, package_name)
     cleanup_token = config_dict.get('cleanup_token', str())
     run_config = ConfigParser.SafeConfigParser()
     run_config.add_section('run_info')
@@ -492,15 +462,15 @@ class DeploymentRPCInterface:
     fp.close()
     return SUCCESS_STATUS
 
-  def _do_bootstrap(self, service, cluster, job, instance_id, **config_dict):
+  def _do_bootstrap(self, service, cluster, job, **config_dict):
     # prepare run dir
-    message = self._prepare_run_env(service, cluster, job, instance_id, **config_dict)
+    message = self._prepare_run_env(service, cluster, job, **config_dict)
     if message != SUCCESS_STATUS:
       return message
 
     # Write other config files to local disk
     config_files = config_dict.get('config_files')
-    service_root = self.get_run_dir(service, cluster, job, instance_id)
+    service_root = self.get_run_dir(service, cluster, job)
     if config_files:
       self._write_config_files(service_root, **config_files)
 
@@ -512,12 +482,12 @@ class DeploymentRPCInterface:
       subprocess.call(cmd)
     return SUCCESS_STATUS
 
-  def _do_start(self, service, cluster, job, instance_id, **config_dict):
+  def _do_start(self, service, cluster, job, **config_dict):
     artifact = config_dict.get('artifact')
     if not artifact:
       return 'Inval config_dict: can\'t find artifact'
 
-    if not self._check_bootstrapped(service, cluster, job, instance_id):
+    if not self._check_bootstrapped(service, cluster, job):
       return "You should bootstrap the job first"
 
     # Check if need update the package
@@ -542,14 +512,14 @@ class DeploymentRPCInterface:
             self._get_package_uri(artifact, revision, timestamp, package_name),
             package_path)
       package_dir = self._make_package_dir(artifact, service, cluster, job,
-          instance_id, revision, timestamp, package_name)
-      run_cfg = '%s/%s' % (self.get_run_dir(service, cluster, job, instance_id),
+          revision, timestamp, package_name)
+      run_cfg = '%s/%s' % (self.get_run_dir(service, cluster, job),
           JOB_RUN_CONFIG)
       self._update_run_cfg(run_cfg, 'run_info', 'package_dir', package_dir)
 
     # Write the start script to local disk
     start_sh = config_dict.get('start.sh')
-    service_root = self.get_run_dir(service, cluster, job, instance_id)
+    service_root = self.get_run_dir(service, cluster, job)
     if not start_sh and not os.path.exists('%s/start.sh' % service_root):
       return 'No start script found'
     elif start_sh:
@@ -562,7 +532,7 @@ class DeploymentRPCInterface:
 
     # Write supervisor config
     http_url = config_dict.get('http_url', '')
-    process_name = self._get_process_name(service, cluster, job, instance_id)
+    process_name = self._get_process_name(service, cluster, job)
     job_config = ConfigParser.SafeConfigParser()
     section = 'program:%s' % process_name
     job_config.add_section(section)
@@ -590,30 +560,30 @@ class DeploymentRPCInterface:
     self.supervisor_rpcinterface.startProcess(process_name)()
     return SUCCESS_STATUS
 
-  def _do_stop(self, service, cluster, job, instance_id, **config_dict):
-    process_name = self._get_process_name(service, cluster, job, instance_id)
+  def _do_stop(self, service, cluster, job, **config_dict):
+    process_name = self._get_process_name(service, cluster, job)
     self.supervisor_rpcinterface.stopProcess(process_name)()
     return SUCCESS_STATUS
 
-  def _do_cleanup(self, service, cluster, job, instance_id, **config_dict):
+  def _do_cleanup(self, service, cluster, job, **config_dict):
     # check cleanup token
     cleanup_token = config_dict.get('cleanup_token')
     if cleanup_token:
-      local_token = self.get_cleanup_token(service, cluster, job, instance_id)
+      local_token = self.get_cleanup_token(service, cluster, job)
       if local_token != cleanup_token:
         return 'Cleanup token is invalid'
 
     try:
-      state = self._do_show(service, cluster, job, instance_id, **config_dict)
+      state = self._do_show(service, cluster, job, **config_dict)
       if state == 'RUNNING':
         return 'You should stop the job first'
     except RPCError, e:
       pass
 
-    log_dir = self.get_log_dir(service, cluster, job, instance_id)
+    log_dir = self.get_log_dir(service, cluster, job)
     cleanup_script = config_dict.get('cleanup.sh', str())
     if cleanup_script:
-      service_root = self.get_run_dir(service, cluster, job, instance_id)
+      service_root = self.get_run_dir(service, cluster, job)
       self._write_file('%s/cleanup.sh' % service_root, cleanup_script)
       cmd = ['/bin/bash', '%s/cleanup.sh' % service_root]
       if subprocess.call(cmd) != 0:
@@ -621,11 +591,11 @@ class DeploymentRPCInterface:
         return 'Execute cleanup.sh failed'
 
     self._cleanup_dir(log_dir)
-    data_dirs = self.get_data_dirs(service, cluster, job, instance_id)
+    data_dirs = self.get_data_dirs(service, cluster, job)
     for data_dir in data_dirs:
       self._cleanup_dir(data_dir)
 
-    process_name = self._get_process_name(service, cluster, job, instance_id)
+    process_name = self._get_process_name(service, cluster, job)
     job_config = '%s/%s/%s.cfg' % (os.getcwd(), CONFIG_PATH, process_name)
     if os.path.exists(job_config):
       os.remove(job_config)
@@ -636,9 +606,9 @@ class DeploymentRPCInterface:
         pass
     return SUCCESS_STATUS
 
-  def _do_show(self, service, cluster, job, instance_id, **config_dict):
+  def _do_show(self, service, cluster, job, **config_dict):
     info = self.supervisor_rpcinterface.getProcessInfo(
-        self._get_process_name(service, cluster, job, instance_id))
+        self._get_process_name(service, cluster, job))
     return info.get('statename')
 
 def check_and_create(path):
