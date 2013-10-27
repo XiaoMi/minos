@@ -64,23 +64,33 @@ def generate_run_scripts(args):
 
   return config_files
 
-def generate_bootstrap_script(args, host, job_name, host_id):
+def generate_bootstrap_script(args, host, job_name, host_id, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-    "zookeeper", args.zookeeper_config.cluster.name, job_name)
+    "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id)
   data_dir = supervisor_client.get_available_data_dirs()[0]
   myid_file = "%s/%s" % (data_dir, MYID_FILE)
 
+  hosts = args.zookeeper_config.jobs["zookeeper"].hosts
+  instance_id = 0 if (instance_id == -1) else instance_id
+  task_id = 0
+  for id, host in hosts.iteritems():
+    if host_id == id:
+      task_id += instance_id
+      break
+    else:
+      task_id += host.instance_num
+
   script_dict = {
     'myid_file': myid_file,
-    'host_id': host_id,
+    'host_id': task_id,
   }
   return deploy_utils.create_run_script(
       '%s/bootstrap_zk.sh.tmpl' % deploy_utils.get_template_dir(),
       script_dict)
 
-def generate_start_script(args, host, job_name):
+def generate_start_script(args, host, job_name, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "zookeeper", args.zookeeper_config.cluster.name, job_name)
+      "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id)
   run_dir = supervisor_client.get_run_dir()
 
   artifact_and_version = "zookeeper-" + args.zookeeper_config.cluster.version
@@ -149,85 +159,101 @@ def cleanup(args):
       "zookeeper", args.zookeeper_config)
 
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  for id, host in hosts.iteritems():
-    deploy_utils.cleanup_job("zookeeper", args.zookeeper_config,
-        hosts[id], "zookeeper", cleanup_token)
+  for host_id in hosts.keys():
+    for instance_id in range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      deploy_utils.cleanup_job("zookeeper", args.zookeeper_config,
+        hosts[host_id].ip, "zookeeper", instance_id, cleanup_token)
 
-def bootstrap_job(args, host, job_name, host_id, cleanup_token):
-  bootstrap_script = generate_bootstrap_script(args, host, job_name, host_id)
+def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
+  # parse the service_config according to the instance_id
+  args.zookeeper_config.parse_generated_config_files(args, instance_id)
+  bootstrap_script = generate_bootstrap_script(args, host, job_name, host_id, instance_id)
   deploy_utils.bootstrap_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
-      host, job_name, cleanup_token, '0', bootstrap_script)
+      host, job_name, instance_id, cleanup_token, '0', bootstrap_script)
 
   # start job after bootstrapping.
-  start_job(args, host, job_name)
+  start_job(args, host, job_name, instance_id)
 
 def bootstrap(args):
   get_zk_service_config(args)
 
   cleanup_token = deploy_utils.confirm_bootstrap("zookeeper", args.zookeeper_config)
-
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  for id in args.task or hosts.iterkeys():
-    bootstrap_job(args, hosts[id], "zookeeper", id, cleanup_token)
 
-def start_job(args, host, job_name):
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      bootstrap_job(args, hosts[host_id].ip, "zookeeper", host_id, instance_id, cleanup_token)
+
+def start_job(args, host, job_name, instance_id):
+  # parse the service_config according to the instance_id
+  args.zookeeper_config.parse_generated_config_files(args, instance_id)
+
   config_files = generate_run_scripts(args)
-  start_script = generate_start_script(args, host, job_name)
+  start_script = generate_start_script(args, host, job_name, instance_id)
   http_url = ''
   deploy_utils.start_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
-      host, job_name, start_script, http_url, **config_files)
+      host, job_name, instance_id, start_script, http_url, **config_files)
 
 def start(args):
   if not args.skip_confirm:
     deploy_utils.confirm_start(args)
   get_zk_service_config(args)
-
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  if args.host is not None:
-    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-  for id in args.task or hosts.iterkeys():
-    start_job(args, hosts[id], "zookeeper")
 
-def stop_job(args, host, job_name):
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      start_job(args, hosts[host_id].ip, "zookeeper", instance_id)
+
+def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("zookeeper", args.zookeeper_config,
-      host, job_name)
+      host, job_name, instance_id)
 
 def stop(args):
   if not args.skip_confirm:
     deploy_utils.confirm_stop(args)
   get_zk_service_config(args)
-
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  if args.host is not None:
-    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-  for id in args.task or hosts.iterkeys():
-    stop_job(args, hosts[id], "zookeeper")
+
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      stop_job(args, hosts[host_id].ip, "zookeeper", instance_id)
 
 def restart(args):
   if not args.skip_confirm:
     deploy_utils.confirm_restart(args)
   get_zk_service_config(args)
-
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  if args.host is not None:
-    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-  for id in args.task or hosts.iterkeys():
-    stop_job(args, hosts[id], "zookeeper")
 
-  for id in args.task or hosts.iterkeys():
-    deploy_utils.wait_for_job_stopping("zookeeper",
-        args.zookeeper_config.cluster.name, "zookeeper", hosts[id])
-    start_job(args, hosts[id], "zookeeper")
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      stop_job(args, hosts[host_id].ip, "zookeeper", instance_id)
+
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      deploy_utils.wait_for_job_stopping("zookeeper",
+        args.zookeeper_config.cluster.name, "zookeeper", hosts[host_id].ip, instance_id)
+      start_job(args, hosts[host_id].ip, "zookeeper", instance_id)
 
 def show(args):
   get_zk_service_config(args)
-
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  if args.host is not None:
-    args.task = deploy_utils.get_task_by_hostname(hosts, args.host)
-  for id in args.task or hosts.iterkeys():
-    deploy_utils.show_job("zookeeper", args.zookeeper_config,
-        hosts[id], "zookeeper")
+
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      deploy_utils.show_job("zookeeper", args.zookeeper_config,
+        hosts[host_id].ip, "zookeeper", instance_id)
 
 def run_shell(args):
   get_zk_service_config(args)
@@ -236,6 +262,8 @@ def run_shell(args):
       args, SHELL_COMMAND_INFO)
   if not main_class:
     return
+
+  args.zookeeper_config.parse_generated_config_files(args)
 
   client_jaas = generate_client_jaas_config(args)
   jaas_fd, jaas_file = tempfile.mkstemp(suffix='zookeeper')
@@ -285,6 +313,8 @@ def update_zk_env_sh(args, artifact, version):
 
 def pack(args):
   get_zk_service_config(args)
+  args.zookeeper_config.parse_generated_config_files(args)
+
   version = args.zookeeper_config.cluster.version
   deploy_utils.make_package_dir(args, "zookeeper", version)
   generate_client_config(args, "zookeeper", version)
@@ -303,15 +333,17 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.zookeeper_config.jobs[job_name].hosts
   wait_time = 0
-  for id in hosts.iterkeys():
-    deploy_utils.confirm_rolling_update(id, wait_time)
-    stop_job(args, hosts[id], job_name)
-    deploy_utils.wait_for_job_stopping("zookeeper",
-        args.zookeeper_config.cluster.name, job_name, hosts[id])
-    start_job(args, hosts[id], job_name)
-    deploy_utils.wait_for_job_starting("zookeeper",
-        args.zookeeper_config.cluster.name, job_name, hosts[id])
-    wait_time = args.time_interval
+  for host_id in hosts.iterkeys():
+    for instance_id in range(hosts[host_id].instance_num):
+      instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
+      deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
+      stop_job(args, hosts[host_id].ip, job_name, instance_id)
+      deploy_utils.wait_for_job_stopping("zookeeper",
+        args.zookeeper_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+      start_job(args, hosts[host_id].ip, job_name, instance_id)
+      deploy_utils.wait_for_job_starting("zookeeper",
+        args.zookeeper_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
+      wait_time = args.time_interval
   Log.print_success("Rolling updating %s success" % job_name)
 
 if __name__ == '__main__':

@@ -6,61 +6,94 @@ class SupervisorClient:
   '''
   The supervisor client.
   '''
-  def __init__(self, host, port, user, passwd, service, cluster, job):
+  def __init__(self, host, port, user, passwd, service, cluster, job, instance_id):
     self.proxy = xmlrpclib.ServerProxy('http://%s:%s@%s:%d' % (
       user, passwd, host, port))
     self.service = service
     self.cluster = cluster
     self.job = job
+    self.instance_id = instance_id
 
   def get_available_data_dirs(self):
     '''
     Get the available data directories of the remote server.
     '''
-    return self.proxy.deployment.get_available_data_dirs(self.service,
+    # The `if` statement block is intended to be compatible with the old supervisor.
+    # After all supervisors upgrading to the latest version,
+    # the `if` statement block will be deleted.
+    # The following similar block will not say more.
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_available_data_dirs(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_available_data_dirs(self.service,
+        self.cluster, self.job, self.instance_id)
 
   def get_data_dirs(self):
     '''
     Get the currently used data directories of this job.
     '''
-    return self.proxy.deployment.get_data_dirs(self.service,
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_data_dirs(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_data_dirs(self.service,
+        self.cluster, self.job, self.instance_id)
 
   def get_log_dir(self):
     '''
     Get the log directory of this job.
     '''
-    return self.proxy.deployment.get_log_dir(self.service,
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_log_dir(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_log_dir(self.service,
+        self.cluster, self.job, self.instance_id)
 
   def get_cleanup_token(self):
     '''
     Get the cleanup token of this job.
     '''
-    return self.proxy.deployment.get_cleanup_token(self.service,
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_cleanup_token(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_cleanup_token(self.service,
+        self.cluster, self.job, self.instance_id)
 
   def get_run_dir(self):
     '''
     Get the running directory of this job.
     '''
-    return self.proxy.deployment.get_run_dir(self.service,
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_run_dir(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_run_dir(self.service,
+        self.cluster, self.job, self.instance_id)
 
   def get_package_dir(self):
     '''
     Get the package directory of this job.
     '''
-    return self.proxy.deployment.get_package_dir(self.service,
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_package_dir(self.service,
         self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_package_dir(self.service,
+        self.cluster, self.job, self.instance_id)
 
   # The reture value of get_package_dir() is the symbol link path of
   # the package dir, the return value of get_real_package_dir() is
   # the result of os.readlink(get_package_dir())
   def get_real_package_dir(self):
-    return self.proxy.deployment.get_real_package_dir(
+    if self.instance_id == -1:
+      return self.proxy.deployment.get_real_package_dir(
         self.service, self.cluster, self.job)
+    else:
+      return self.proxy.deployment.get_real_package_dir(
+        self.service, self.cluster, self.job, self.instance_id)
 
   def get_current_package_dir(self):
     return self.proxy.deployment.get_current_package_dir(self.service, self.cluster)
@@ -83,8 +116,12 @@ class SupervisorClient:
         'data_dir_indexes': data_dir_indexes,
         'config_files': config_files,
       }
-      message = self.proxy.deployment.bootstrap(self.service, self.cluster,
+      if self.instance_id == -1:
+        message = self.proxy.deployment.bootstrap(self.service, self.cluster,
           self.job, config_dict)
+      else:
+        message = self.proxy.deployment.bootstrap(self.service, self.cluster,
+          self.job, config_dict, self.instance_id)
     except xmlrpclib.Fault, f:
       message = str(f)
     return message
@@ -105,8 +142,12 @@ class SupervisorClient:
         'revision': revision,
         'timestamp': timestamp,
       }
-      message = self.proxy.deployment.start(self.service, self.cluster,
+      if self.instance_id == -1:
+        message = self.proxy.deployment.start(self.service, self.cluster,
           self.job, config_dict)
+      else:
+        message = self.proxy.deployment.start(self.service, self.cluster,
+          self.job, config_dict, self.instance_id)
     except xmlrpclib.Fault, f:
       message = str(f)
     return message
@@ -116,8 +157,12 @@ class SupervisorClient:
     Stop the job.
     '''
     try:
-      message = self.proxy.deployment.stop(self.service, self.cluster,
+      if self.instance_id == -1:
+        message = self.proxy.deployment.stop(self.service, self.cluster,
           self.job, dict())
+      else:
+        message = self.proxy.deployment.stop(self.service, self.cluster,
+          self.job, dict(), self.instance_id)
     except xmlrpclib.Fault, f:
       message = str(f)
     return message
@@ -127,8 +172,12 @@ class SupervisorClient:
     Show the running status the job.
     '''
     try:
-      message = self.proxy.deployment.show(self.service, self.cluster,
+      if self.instance_id == -1:
+        message = self.proxy.deployment.show(self.service, self.cluster,
           self.job, dict())
+      else:
+        message = self.proxy.deployment.show(self.service, self.cluster,
+          self.job, dict(), self.instance_id)
     except xmlrpclib.Fault, f:
       message = str(f)
     return message
@@ -140,7 +189,9 @@ class SupervisorClient:
     if self.stop() == 'OK':
       return self.start(start_script, **config_files)
     else:
-      return 'Stop %s-%s-%s failed' % (self.service, self.cluster, self.job)
+      task_id = self.instance_id
+      task_id = 0 if (task_id == -1) else task_id
+      return 'Stop %s-%s-%s-%s failed' % (self.service, self.cluster, self.job, task_id)
 
   def cleanup(self, cleanup_token, cleanup_script):
     '''
@@ -151,8 +202,12 @@ class SupervisorClient:
         'cleanup_token': cleanup_token,
         'cleanup.sh': cleanup_script,
       }
-      message = self.proxy.deployment.cleanup(self.service, self.cluster,
+      if self.instance_id == -1:
+        message = self.proxy.deployment.cleanup(self.service, self.cluster,
           self.job, config_dict)
+      else:
+        message = self.proxy.deployment.cleanup(self.service, self.cluster,
+          self.job, config_dict, self.instance_id)
     except xmlrpclib.Fault, f:
       message = str(f)
     return message
