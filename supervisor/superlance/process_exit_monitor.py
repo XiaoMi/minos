@@ -42,7 +42,7 @@ def handle_event(payload):
   sys.path.append('%s/../deployment' % os.path.dirname(__file__))
   from rpcinterface import DEFAULT_APP_ROOT
   app_root = parser.get('rpcinterface:deployment', 'app_root', DEFAULT_APP_ROOT)
-  reg_expr = JOB_INSTANCES_REGEX(job)
+  reg_expr = JOB_INSTANCES_REGEX.match(job)
   job = reg_expr.group('job')
 
   if reg_expr.group('instance_id'):
