@@ -190,12 +190,17 @@ def get_section_attribute(args, cluster, jobs, instance_id, val):
   if section == "cluster":
     return getattr(cluster, attribute)
   else:
+    section_instance_id = instance_id
     if attribute == "base_port":
-      instance_id = get_real_instance_id(instance_id)
-      return get_base_port(jobs[section].base_port, instance_id)
+      section_instance_id = get_real_instance_id(section_instance_id)
+      return get_base_port(jobs[section].base_port, section_instance_id)
     else:
       host = jobs[section].hosts[0].ip
-      return get_specific_dir(host, args.service, cluster.name, section, instance_id, attribute)
+      # the parsing section may not be the job which is being started or bootstrapped,
+      # so call get_specific_dir according to the section_instance_id.
+      if jobs[section].hosts[0].instance_num == 1:
+        section_instance_id = -1
+      return get_specific_dir(host, args.service, cluster.name, section, section_instance_id, attribute)
 
 
 CLUSTER_NAME_REGEX = re.compile(r'((?P<zk>[a-z0-9]+)-)?([a-z0-9]+)')
