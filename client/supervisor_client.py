@@ -189,9 +189,9 @@ class SupervisorClient:
     if self.stop() == 'OK':
       return self.start(start_script, **config_files)
     else:
-      task_id = self.instance_id
-      task_id = 0 if (task_id == -1) else task_id
-      return 'Stop %s-%s-%s-%s failed' % (self.service, self.cluster, self.job, task_id)
+      real_instance_id = self.instance_id
+      real_instance_id = 0 if (real_instance_id == -1) else real_instance_id
+      return 'Stop %s-%s-%s%s failed' % (self.service, self.cluster, self.job, real_instance_id)
 
   def cleanup(self, cleanup_token, cleanup_script):
     '''
