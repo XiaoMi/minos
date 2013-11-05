@@ -71,14 +71,7 @@ def generate_bootstrap_script(args, host, job_name, host_id, instance_id):
   myid_file = "%s/%s" % (data_dir, MYID_FILE)
 
   hosts = args.zookeeper_config.jobs["zookeeper"].hosts
-  instance_id = 0 if (instance_id == -1) else instance_id
-  task_id = 0
-  for id, host in hosts.iteritems():
-    if host_id == id:
-      task_id += instance_id
-      break
-    else:
-      task_id += host.instance_num
+  task_id = deploy_utils.get_task_id(hosts, host_id, instance_id)
 
   script_dict = {
     'myid_file': myid_file,
