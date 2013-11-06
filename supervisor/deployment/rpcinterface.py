@@ -309,6 +309,34 @@ class DeploymentRPCInterface:
     '''
     return self._do_show(service, cluster, job, instance_id, **config_dict)
 
+  def read_file(self, file_path):
+    '''
+    Read the file with the given file path on server
+    @param file_path      the name of file to read
+    '''
+    with open(file_path) as fi:
+      return fi.read()
+
+  def write_text_to_file(self, file_path, content):
+    '''
+    Write content to the file with the given file path on server
+    @param file_path      the name of file to write
+    @param content        the content to write
+    '''
+    with open(file_path, 'w') as fi:
+      fi.write(content)
+    return 'OK'
+
+  def append_text_to_file(self, file_path, content):
+    '''
+    Append content to the file with the given file path on server
+    @param file_path      the name of file to append
+    @param content        the content to append
+    '''
+    with open(file_path, 'a') as fi:
+      fi.write(content)
+    return 'OK'
+
   def _get_package_uri(self, artifact, revision, timestamp, package_name):
     return '%s/%s/%s/%s-%s/%s' % (self.package_server,
         self.download_package_uri, artifact,
