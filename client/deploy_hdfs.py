@@ -450,8 +450,10 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.hdfs_config.jobs[job_name].hosts
   wait_time = 0
-  for host_id in hosts.iterkeys():
-    for instance_id in range(hosts[host_id].instance_num):
+
+  args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
+  for host_id in args.task_map.keys() or hosts.iterkeys():
+    for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
       deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
       stop_job(args, hosts[host_id].ip, job_name, instance_id)
