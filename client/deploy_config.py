@@ -3,6 +3,8 @@
 import ConfigParser
 import os
 
+from log import Log
+
 DEPLOY_CONFIG = "../deploy.cfg"
 
 class DeployConfig:
