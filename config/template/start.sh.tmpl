@@ -51,4 +51,4 @@ fi
 if [ -f ./pre.sh ]; then
   /bin/bash ./pre.sh
 fi
-exec ${java} -cp $class_path $options $params $@ 2>&1 |split -b 524288000 -d -a 10 - $output_file-
+exec ${java} -cp $class_path $options $params $@ 2>&1 | split -b 524288000 -d -a 10 - $output_file-
