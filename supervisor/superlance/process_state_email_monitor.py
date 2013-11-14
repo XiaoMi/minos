@@ -91,6 +91,7 @@ class ProcessStateEmailMonitor(ProcessStateMonitor):
         self.digest_len = 76
         self.password = kwargs.get('password')
         self.supervisord_port = kwargs.get('supervisord_port')
+        self.customized_mail_list = []
 
     def send_batch_notification(self):
         email = self.get_batch_email()
@@ -108,8 +109,9 @@ From: %(from)s\nSubject: %(subject)s\nBody:\n%(body)s\n" % email_for_log)
 
     def get_batch_email(self):
         if len(self.batchmsgs):
+            self.customized_mail_list.extend(self.to_emails)
             return {
-                'to': self.to_emails,
+                'to': self.customized_mail_list,
                 'from': self.from_email,
                 'subject': self.subject,
                 'body': '\n'.join(self.get_batch_msgs()),

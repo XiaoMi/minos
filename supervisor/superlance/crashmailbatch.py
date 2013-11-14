@@ -55,6 +55,8 @@ crashmailbatch.py --toEmail="you@bar.com" --fromEmail="me@bar.com"
 
 """
 
+import ConfigParser
+import os
 import socket
 
 from supervisor import childutils
@@ -64,12 +66,38 @@ class CrashMailBatch(ProcessStateEmailMonitor):
 
     process_state_events = ['PROCESS_STATE_EXITED']
 
+    def load_alert_config_file(self):
+      alert_config_path = '%s/../alert.cfg' % os.path.dirname(__file__)
+      parser = ConfigParser.SafeConfigParser()
+
+      if os.path.exists(alert_config_path):
+        parser.read([alert_config_path])
+      return parser
+
+    def add_customized_mail_list(self, pheaders):
+      self.customized_mail_list = []
+      name_list = pheaders['groupname'].split('--')
+      alert_section = str()
+      if len(name_list) == 3:
+        service, cluster, job = name_list
+        alert_section = service + "--" + cluster
+      else:
+        raise ValueError("Invalid cluster name: %s" % pheaders['groupname'])
+
+      if self.alert_config_parser.has_option(alert_section, 'to_emails'):
+        mail_list = [mail.strip()
+          for mail in self.alert_config_parser.get(alert_section, 'to_emails').split(",")]
+        for mail in mail_list:
+          if mail not in self.to_emails:
+            self.customized_mail_list.append(mail)
+
     def __init__(self, **kwargs):
         ProcessStateEmailMonitor.__init__(self, **kwargs)
         self.hostname = socket.gethostname()
         self.local_ip = socket.gethostbyname(self.hostname)
         self.subject = 'Crash alert from supervisord on %s' % self.hostname
         self.now = kwargs.get('now', None)
+        self.alert_config_parser = self.load_alert_config_file()
 
     def get_process_state_change_msg(self, headers, payload):
         pheaders, pdata = childutils.eventdata(payload+'\n')
@@ -77,6 +105,7 @@ class CrashMailBatch(ProcessStateEmailMonitor):
         if int(pheaders['expected']):
             return None
 
+        self.add_customized_mail_list(pheaders)
         txt = 'Process %(groupname)s:%(processname)s (pid %(pid)s) died \
 unexpectedly' % pheaders
         return '%s -- http://%s:%d -- %s' % (childutils.get_asctime(self.now),
