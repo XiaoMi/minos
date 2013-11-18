@@ -834,16 +834,22 @@ class Command(BaseCommand):
           job = cluster.jobs[job_name]
           # We assume http port is always base_port + 1
           port = job.base_port + 1
-          for task_id, host in job.hostnames.iteritems():
-            task_record, created = Task.objects.get_or_create(
+          # support multiple instances
+          hosts = job.hosts
+          for host_id, host in hosts.iteritems():
+            host_name = job.hostnames[host_id]
+            for instance_id in range(host.instance_num):
+              task_id = deploy_utils.get_task_id(hosts, host_id, instance_id)
+              instance_port = deploy_utils.get_base_port(port,instance_id)
+              task_record, created = Task.objects.get_or_create(
                 job=job_record, task_id=task_id,
-                defaults={"host":host, "port":port})
-            if not created or task_record.host != host or task_record.port != port:
-              task_record.active = True
-              task_record.host = host
-              task_record.port = port
-              task_record.save()
-            self.metric_sources.append(
+                defaults={"host":host_name, "port":instance_port})
+              if not created or task_record.host != host_name or task_record.port != instance_port:
+                task_record.active = True
+                task_record.host = host_name
+                task_record.port = instance_port
+                task_record.save()
+              self.metric_sources.append(
                 MetricSource(self.collector_config, task_record))
 
   def fetch_metrics(self):
