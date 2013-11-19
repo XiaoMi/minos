@@ -453,16 +453,16 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.hbase_config.jobs[job_name].hosts
   wait_time = 0
-  base_port = hosts.base_port 
 
   args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
   for host_id in args.task_map.keys() or hosts.iterkeys():
     for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
       if not args.skip_confirm:
-        deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time) 
+        deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
 
-      port = deploy_utils.get_base_port(base_port, deploy_utils.get_real_instance_id(instance_id));
+      port = deploy_utils.get_base_port(
+        args.hbase_config.jobs[job_name].base_port, instance_id)
       if args.vacate_rs:
         vacate_region_server(args, hosts[host_id].ip, port)
 
