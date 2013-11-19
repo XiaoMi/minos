@@ -129,8 +129,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
           '-XX:+PrintGCDetails ' +
           '-XX:+PrintGCDateStamps ' +
           '-Xloggc:$run_dir/stdout/%s_gc_${start_time}.log ' % job_name +
-          '-XX:+UseMembar ' +
-          '-XX:SurvivorRatio=1 ' +
+          '-XX:SurvivorRatio=6 ' +
           '-XX:+UseCMSCompactAtFullCollection ' +
           '-XX:CMSInitiatingOccupancyFraction=75 ' +
           '-XX:+UseCMSInitiatingOccupancyOnly ' +
@@ -149,16 +148,15 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
           '-XX:CMSWaitDuration=2000 ' +
           '-XX:+CMSScavengeBeforeRemark ' +
           '-XX:+PrintPromotionFailure ' +
-          '-XX:ConcGCThreads=8 ' +
-          '-XX:ParallelGCThreads=8 ' +
-          '-XX:PretenureSizeThreshold=4m ' +
+          '-XX:ConcGCThreads=16 ' +
+          '-XX:ParallelGCThreads=16 ' +
+          '-XX:PretenureSizeThreshold=2097088 ' +
           '-XX:+CMSConcurrentMTEnabled ' +
           '-XX:+ExplicitGCInvokesConcurrent ' +
           '-XX:+SafepointTimeout ' +
           '-XX:MonitorBound=16384 ' +
-          '-XX:OldPLABSize=16 ' +
-          '-XX:-ResizeOldPLAB ' +
           '-XX:-UseBiasedLocking ' +
+          '-XX:MaxTenuringThreshold=3 ' +
           '-Dproc_%s ' % job_name +
           '-Djava.net.preferIPv4Stack=true ' +
           '-Dhbase.log.dir=$log_dir ' +
