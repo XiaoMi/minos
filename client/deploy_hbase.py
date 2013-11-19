@@ -398,23 +398,23 @@ def pack(args):
     deploy_utils.pack_package(args, "hbase", version)
   Log.print_success("Pack client utilities for hbase success!\n")
 
-def vacate_region_server(args, ip):
+def vacate_region_server(args, ip, port):
   package_root = deploy_utils.get_hbase_package_root(
       args.hbase_config.cluster.version)
   Log.print_info("Vacate region server: " + ip);
   host = socket.gethostbyaddr(ip)[0]
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,
-    "unload", host]
+    "unload", "%s:%d" % (host, port)]
   if run_shell(args) != 0:
     Log.print_critical("Unload host %s failed." % host);
 
-def recover_region_server(args, ip):
+def recover_region_server(args, ip, port):
   package_root = deploy_utils.get_hbase_package_root(
       args.hbase_config.cluster.version)
   Log.print_info("Recover region server: " + ip);
   host = socket.gethostbyaddr(ip)[0]
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,
-    "load", host]
+    "load", "%s:%d" % (host, port)]
   if run_shell(args) != 0:
     Log.print_critical("Load host %s failed." % host);
 
@@ -455,16 +455,19 @@ def rolling_update(args):
   Log.print_info("Rolling updating %s" % job_name)
   hosts = args.hbase_config.jobs[job_name].hosts
   wait_time = 0
+  base_port = hosts.base_port 
 
   args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
   for host_id in args.task_map.keys() or hosts.iterkeys():
     for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
       if not args.skip_confirm:
-        deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time)
+        deploy_utils.confirm_rolling_update(host_id, instance_id, wait_time) 
 
+      port = deploy_utils.get_base_port(base_port, deploy_utils.get_real_instance_id(instance_id));
       if args.vacate_rs:
-        vacate_region_server(args, hosts[host_id].ip)
+        vacate_region_server(args, hosts[host_id].ip, port)
+
       stop_job(args, hosts[host_id].ip, job_name, instance_id)
       deploy_utils.wait_for_job_stopping("hbase",
         args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
@@ -473,7 +476,7 @@ def rolling_update(args):
         args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
 
       if args.vacate_rs:
-        recover_region_server(args, hosts[host_id].ip)
+        recover_region_server(args, hosts[host_id].ip, port)
       wait_time = args.time_interval
 
   if args.vacate_rs:
