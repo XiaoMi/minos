@@ -42,18 +42,17 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
 
   artifact_and_version = "impala-" + args.impala_config.cluster.version
 
-  real_instance_id = deploy_utils.get_real_instance_id(instance_id)
   script_dict = {
     "artifact": artifact_and_version,
     "job_name": job_name,
     "run_dir": supervisor_client.get_run_dir(),
     "ticket_cache": "$run_dir/impala.tc",
     "params":
-      "-webserver_port=%d " % (service_config.get_base_port(job.base_port, real_instance_id) + 1) +
-      "-be_port=%d " % (service_config.get_base_port(impalad.base_port, real_instance_id) + 2) +
-      "-planservice_port=%d " % (service_config.get_base_port(impalad.base_port, real_instance_id) + 3) +
-      "-state_store_port=%d " % (service_config.get_base_port(statestored.base_port, real_instance_id)) +
-      "-state_store_subscriber_port=%d " % (service_config.get_base_port(statestored.base_port, real_instance_id) + 1) +
+      "-webserver_port=%d " % (service_config.get_base_port(job.base_port, instance_id) + 1) +
+      "-be_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 2) +
+      "-planservice_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 3) +
+      "-state_store_port=%d " % (service_config.get_base_port(statestored.base_port, instance_id)) +
+      "-state_store_subscriber_port=%d " % (service_config.get_base_port(statestored.base_port, instance_id) + 1) +
       "-mem_limit=20% " + # TODO make this configurable
       "-state_store_host=%s " % statestored.hosts[0].ip +
       "-kerberos_reinit_interval=1200 " + # 20hours
@@ -67,8 +66,8 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
   }
 
   if job_name == "impalad":
-    script_dict["params"] += "-beeswax_port=%d " % (service_config.get_base_port(impalad.base_port, real_instance_id))
-    script_dict["params"] += "-hs2_port=%d " % (service_config.get_base_port(impalad.base_port, real_instance_id) + 4)
+    script_dict["params"] += "-beeswax_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id))
+    script_dict["params"] += "-hs2_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 4)
 
   if deploy_utils.is_security_enabled(args):
     script_dict["params"] += "-principal=%s/hadoop@%s " % (

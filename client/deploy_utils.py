@@ -49,7 +49,7 @@ def get_base_port(base_port, instance_id):
 
 def get_http_service_uri(host, base_port, instance_id):
   return 'http://%s:%d' % (host,
-    get_base_port(base_port, get_real_instance_id(instance_id)) + 1)
+    get_base_port(base_port, instance_id) + 1)
 
 def get_host_id(hosts, host_ip):
   for id, host in hosts.iteritems():

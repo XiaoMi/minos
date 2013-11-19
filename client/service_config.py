@@ -22,7 +22,7 @@ def get_real_instance_id(instance_id):
     return instance_id
 
 def get_base_port(base_port, instance_id):
-  return base_port + BASEPORT_INTERVAL * instance_id
+  return base_port + BASEPORT_INTERVAL * get_real_instance_id(instance_id)
 
 def parse_task_number(task_id, hosts):
   found_task = False
@@ -42,7 +42,6 @@ def get_port_addition_result(args, cluster, jobs, instance_id, val):
   reg_expr = JOB_PORT_EXPR_REGEX.match(val)
   job_name = reg_expr.group('job')
   add_num = int(reg_expr.group('num'))
-  instance_id = get_real_instance_id(instance_id)
   return get_base_port(jobs[job_name].base_port, instance_id) + add_num
 
 def get_task_port_addition_result(args, cluster, jobs, instance_id, val):
@@ -192,7 +191,6 @@ def get_section_attribute(args, cluster, jobs, instance_id, val):
   else:
     section_instance_id = instance_id
     if attribute == "base_port":
-      section_instance_id = get_real_instance_id(section_instance_id)
       return get_base_port(jobs[section].base_port, section_instance_id)
     else:
       host = jobs[section].hosts[0].ip
