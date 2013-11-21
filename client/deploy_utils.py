@@ -111,11 +111,14 @@ def get_local_package_path(artifact, version):
     Log.print_critical("Unknow artifact: %s" % artifact)
   return package_path
 
-def get_revision_number(cmd, output_prefix):
+def get_revision_number(cmd, output_prefix, work_space_dir):
   env = os.environ
   # Enforce English locale.
   env["LC_ALL"] = "C"
+  current_work_dir = os.getcwd()
+  os.chdir(work_space_dir)
   content = subprocess.check_output(cmd, stderr=subprocess.STDOUT, env=env)
+  os.chdir(current_work_dir)
   for line in content.splitlines():
     if line.startswith(output_prefix):
       return line[len(output_prefix):]
@@ -140,13 +143,15 @@ def generate_package_revision(root):
 
   try:
     try:
+      work_space_dir = './'
       cmd = ["svn", "info", abs_path]
       revision_prefix = "Revision: "
-      return "r%s" % get_revision_number(cmd, revision_prefix)
+      return "r%s" % get_revision_number(cmd, revision_prefix, work_space_dir)
     except:
+      work_space_dir = '../../'
       cmd = ["git", "show"]
       commit_prefix = "commit "
-      return get_revision_number(cmd, commit_prefix)
+      return get_revision_number(cmd, commit_prefix, work_space_dir)
   except:
     # We cannot get the version No., just return a fake one
     return "r%s" % FAKE_SVN_VERSION
