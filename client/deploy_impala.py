@@ -41,12 +41,14 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
   statestored = args.impala_config.jobs["statestored"]
 
   artifact_and_version = "impala-" + args.impala_config.cluster.version
+  log_level = deploy_utils.get_service_log_level(args, args.impala_config)
 
   script_dict = {
     "artifact": artifact_and_version,
     "job_name": job_name,
     "run_dir": supervisor_client.get_run_dir(),
     "ticket_cache": "$run_dir/impala.tc",
+    "log_level": log_level,
     "params":
       "-webserver_port=%d " % (service_config.get_base_port(job.base_port, instance_id) + 1) +
       "-be_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 2) +

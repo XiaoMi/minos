@@ -4,6 +4,7 @@ artifact="%artifact"
 job_name="%job_name"
 run_dir="%run_dir"
 ticket_cache="%ticket_cache"
+log_level="%log_level"
 params="%params"
 
 run_dir=`cd "$run_dir"; pwd`
@@ -34,7 +35,7 @@ $java_home/jre/lib/$os_arch/server
 export LD_LIBRARY_PATH=$ld_library_path
 
 # Set hdfs opts
-export LIBHDFS_OPTS="-Djava.security.krb5.conf=/etc/krb5-hadoop.conf -Dimpala.log.dir=$run_dir/log"
+export LIBHDFS_OPTS="-Djava.security.krb5.conf=/etc/krb5-hadoop.conf -Dimpala.log.dir=$run_dir/log -Dimpala.log.level=$log_level"
 
 # Set impala home
 export IMPALA_HOME=$package_dir

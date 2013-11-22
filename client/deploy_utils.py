@@ -68,6 +68,12 @@ def get_task_id(hosts, host_id, instance_id):
       task_id += host.instance_num
   return task_id
 
+def get_service_log_level(args, service_config):
+  if args.log_level:
+    return args.log_level
+  else:
+    return service_config.cluster.log_level
+
 def get_local_package_path_general(path, artifact, version):
   '''
   Get the local tarball path of the package of specified artifact and version

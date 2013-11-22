@@ -97,6 +97,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
   service_env = ""
   for component_path in ["HADOOP_COMMON_HOME", "HADOOP_HDFS_HOME", "YARN_HOME"]:
     service_env += "export %s=$package_dir\n" % (component_path)
+  log_level = deploy_utils.get_service_log_level(args, args.yarn_config)
 
   script_dict = {
       "artifact": artifact_and_version,
@@ -126,6 +127,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
           '-Dyarn.log.dir=$log_dir ' +
           '-Dyarn.pid=$pid ' +
           '-Dyarn.cluster=%s ' % args.yarn_config.cluster.name +
+          '-Dyarn.log.level=%s ' % log_level +
           '-Dhadoop.policy.file=hadoop-policy.xml ' +
           '-Dhadoop.home.dir=$package_dir ' +
           '-Dhadoop.id.str=%s ' % args.remote_user +

@@ -98,6 +98,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
     component_dir = ("$package_dir/share/hadoop/%s" % component)
     jar_dirs += "%s/:%s/lib/*:%s/*" % (
         component_dir, component_dir, component_dir)
+  log_level = deploy_utils.get_service_log_level(args, args.hdfs_config)
 
   script_dict = {
       "artifact": artifact_and_version,
@@ -126,6 +127,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
           '-Dhdfs.log.dir=$log_dir ' +
           '-Dhdfs.pid=$pid ' +
           '-Dhdfs.cluster=%s ' % args.hdfs_config.cluster.name +
+          '-Dhdfs.log.level=%s ' % log_level +
           '-Dhadoop.policy.file=hadoop-policy.xml ' +
           '-Dhadoop.home.dir=$package_dir ' +
           '-Djava.security.krb5.conf=$run_dir/krb5.conf ' +

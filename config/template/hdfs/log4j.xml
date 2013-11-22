@@ -2,7 +2,7 @@
 <!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
 <log4j:configuration debug="false" xmlns:log4j='http://jakarta.apache.org/log4j/'>
   <root>
-    <level value="debug" />
+    <level value="${hdfs.log.level}" />
     <appender-ref ref="EventCounter" />
     <appender-ref ref="ASYNC_DRFA" />
   </root>

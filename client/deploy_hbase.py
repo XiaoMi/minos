@@ -107,6 +107,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
   # must include both [dir]/ and [dir]/* as [dir]/* only import all jars under
   # this dir but we also need access the webapps under this dir.
   jar_dirs = "%s/:%s/lib/*:%s/*" % (component_dir, component_dir, component_dir)
+  log_level = deploy_utils.get_service_log_level(args, args.hbase_config)
 
   script_dict = {
       "artifact": artifact_and_version,
@@ -162,6 +163,7 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
           '-Dhbase.log.dir=$log_dir ' +
           '-Dhbase.pid=$pid ' +
           '-Dhbase.cluster=%s ' % args.hbase_config.cluster.name +
+          '-Dhbase.log.level=%s ' % log_level +
           '-Dhbase.policy.file=hbase-policy.xml ' +
           '-Dhbase.home.dir=$package_dir ' +
           '-Djava.security.krb5.conf=$run_dir/krb5.conf ' +

@@ -23,6 +23,10 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "impala": deploy_impala,
 }
 
+LOG_LEVEL_RANGE_MAP = [
+  "trace", "debug", "info", "warn", "error", "fatal"
+]
+
 def add_service_arguments(parser):
   # NOTE: add_service_arguments must be called lastly.
   parser.add_argument("service",
@@ -33,6 +37,9 @@ def add_service_arguments(parser):
   parser.add_argument("--job", type=str, nargs="+",
       help="The list of jobs to be manipulated, separated by space. If empty, "
            "all jobs would be manipulated.")
+  parser.add_argument("--log_level", type=str, default="",
+      choices=LOG_LEVEL_RANGE_MAP,
+      help="The global log level to be configured for the service.")
   task_group = parser.add_mutually_exclusive_group()
   task_group.add_argument("--task", type=str, nargs="+",
       help="The list of tasks to be manipulated, separated by space. If task "

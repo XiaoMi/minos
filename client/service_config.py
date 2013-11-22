@@ -250,6 +250,7 @@ CLUSTER_SCHEMA = {
   "revision": (str, ""),
   "timestamp": (str, ""),
   "hdfs_cluster": (str, ""),
+  "log_level": (str, "info"),
 }
 
 MULTIPLE_INSTANCES_JOBS = ["datanode", "regionserver", "nodemanager", "historyserver", "impalad"]

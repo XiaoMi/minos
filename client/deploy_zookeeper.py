@@ -92,6 +92,7 @@ def generate_start_script(args, host, job_name, instance_id):
   # this dir but we also need access the webapps under this dir.
   jar_dirs = "%s/:%s/lib/*:%s/*" % (component_dir, component_dir, component_dir)
   job = args.zookeeper_config.jobs["zookeeper"]
+  log_level = deploy_utils.get_service_log_level(args, args.zookeeper_config)
 
   script_dict = {
       "artifact": artifact_and_version,
@@ -117,6 +118,7 @@ def generate_start_script(args, host, job_name, instance_id):
           '-Xloggc:$run_dir/stdout/zk_gc_${start_time}.log ' +
           '-Djava.net.preferIPv4Stack=true ' +
           '-Dzookeeper.log.dir=$log_dir ' +
+          '-Dzookeeper.log.level=%s ' % log_level +
           '-Dzookeeper.cluster=%s ' % args.zookeeper_config.cluster.name +
           '-Dzookeeper.tracelog.dir=$log_dir ',
   }
