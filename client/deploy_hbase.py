@@ -339,6 +339,7 @@ def run_shell(args):
         deploy_utils.get_config_dir())
 
     (jaas_fd, jaas_file) = tempfile.mkstemp()
+    args.zookeeper_config.parse_generated_config_files(args)
     os.write(jaas_fd, deploy_zookeeper.generate_client_jaas_config(args))
     os.close(jaas_fd)
     hbase_opts.append("-Djava.security.auth.login.config=%s" % jaas_file)
@@ -381,6 +382,7 @@ def generate_client_config(args, artifact, version):
   deploy_utils.write_file("%s/hdfs-site.xml" % config_path,
       deploy_utils.generate_site_xml(args,
         args.hbase_config.configuration.generated_files["hdfs-site.xml"]))
+  args.zookeeper_config.parse_generated_config_files(args)
   deploy_utils.write_file("%s/jaas.conf" % config_path,
       deploy_zookeeper.generate_client_jaas_config(args))
   deploy_utils.write_file("%s/krb5.conf" % config_path,
