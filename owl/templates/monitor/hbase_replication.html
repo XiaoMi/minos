@@ -5,15 +5,16 @@
     <div class="row">
         <div id="sidebar" class="span1">
             <ul class="nav nav-list affix">
-              {% for peer_id, graphs in replication_metrics %}
+              {% for peer_id, cluster, graphs in replication_metrics %}
                 <li><a href="#{{peer_id}}">peer_id={{peer_id}}</a></li>
               {% endfor %}
             </ul>
         </div>
         <div class="span11">
-            {% for peer_id, graphs in replication_metrics%}
+            {% for peer_id, cluster, graphs in replication_metrics%}
             <section id="{{peer_id}}">
             <div class="row">
+            <h5 align="center">peer cluster={{cluster}}</h5>
             {% for graph in graphs %}
                 <div class="span5">
                     <center>{{graph.title}}</center>

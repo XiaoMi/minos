@@ -141,17 +141,20 @@ def make_metric_query_graph_for_endpoints(endpoints, group, key):
     graph['query'].append(make_metric_query(endpoint, group, key))
   return graph
 
-def get_peer_id_endpoint_map(region_servers):
+def get_peer_id_endpoint_map_and_cluster(region_servers):
   peer_id_endpoint_map = {}
+  peer_id_cluster = {}
   for region_server in region_servers:
     endpoint = form_perf_counter_endpoint_name(region_server.task)
     replicationMetrics = json.loads(region_server.replicationMetrics)
     for peer_id in replicationMetrics.keys():
+      if "peerClusterName" in replicationMetrics[peer_id]:
+        peer_id_cluster[peer_id] = replicationMetrics[peer_id]["peerClusterName"]
       peer_id_endpoints = peer_id_endpoint_map.setdefault(peer_id, []) 
       peer_id_endpoints.append(endpoint)
-  return peer_id_endpoint_map
+  return (peer_id_endpoint_map, peer_id_cluster)
 
-def make_metrics_query_for_replication(peer_id_endpoint_map):
+def make_metrics_query_for_replication(peer_id_endpoint_map, peer_id_cluster_map):
   metrics = []
   for peer_id in peer_id_endpoint_map.keys():
     endpoints = peer_id_endpoint_map[peer_id]
@@ -159,7 +162,10 @@ def make_metrics_query_for_replication(peer_id_endpoint_map):
     for key in metric_view_config.REPLICATION_METRICS_VIEW_CONFIG:
       replication_key = key + '-' + peer_id
       peer_graphs.append(make_metric_query_graph_for_endpoints(endpoints, "Replication", replication_key))
-    metrics.append((peer_id, peer_graphs))
+    cluster_name = "unknown-cluster"
+    if peer_id in peer_id_cluster_map.keys():
+      cluster_name = peer_id_cluster_map[peer_id]
+    metrics.append((peer_id, cluster_name, peer_graphs))
   return metrics
 
 # metrics is an array of counters, where the counter is formatted as :
