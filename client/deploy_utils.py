@@ -149,15 +149,13 @@ def generate_package_revision(root):
 
   try:
     try:
-      work_space_dir = './'
-      cmd = ["svn", "info", abs_path]
+      cmd = ["svn", "info"]
       revision_prefix = "Revision: "
-      return "r%s" % get_revision_number(cmd, revision_prefix, work_space_dir)
+      return "r%s" % get_revision_number(cmd, revision_prefix, abs_path)
     except:
-      work_space_dir = '../../'
       cmd = ["git", "show"]
       commit_prefix = "commit "
-      return get_revision_number(cmd, commit_prefix, work_space_dir)
+      return get_revision_number(cmd, commit_prefix, abs_path)
   except:
     # We cannot get the version No., just return a fake one
     return "r%s" % FAKE_SVN_VERSION
