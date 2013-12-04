@@ -484,6 +484,7 @@ def respond(request, template, params=None):
   params['tsdb_url_prefix'] = owl_config.TSDB_ADDR
   params['supervisor_port'] = owl_config.SUPERVISOR_PORT
   params['start_date'] = (datetime.datetime.now() - datetime.timedelta(minutes=15)).strftime('%Y/%m/%d-%H:%M:%S')
+  params['quota_start_date'] = (datetime.datetime.now() - datetime.timedelta(hours=20)).strftime('%Y/%m/%d-%H:%M:%S')
   params.update(request.GET)
   response = render_to_response(template, params,
                                 context_instance=RequestContext(request))

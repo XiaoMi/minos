@@ -1,5 +1,6 @@
 import datetime
 import logging
+import quota_injector
 import time
 import utils.hadoop_util
 
@@ -8,6 +9,7 @@ from django.utils import timezone
 from monitor.models import Cluster, Quota, Service
 
 logger = logging.getLogger('quota')
+quota_injector = quota_injector.QuotaInjector()
 
 class QuotaUpdater:
   """Update path quota in hdfs"""
@@ -27,6 +29,7 @@ class QuotaUpdater:
     cluster_name = cluster.name
     now = time.time()
     quota_list = utils.hadoop_util.get_quota_summary(cluster_name)
+    quota_injector.push_quota_to_tsdb(quota_list, cluster_name)
     for quota in quota_list:
       quota_record, ok = Quota.objects.get_or_create(cluster=cluster, name=quota['name'])
       quota_record.quota = quota['quota']
