@@ -24,7 +24,23 @@
                         color: '#000000',
                         connectorColor: '#000000',
                         formatter: function() {
+                          if (this.y < 1024*1024) {
                             return '<b>'+ this.point.name +'</b>: '+ Highcharts.numberFormat(this.percentage, 1) +' % : ' + this.y;
+                          } else {
+                            K = 1024;
+                            exponent = [2,3,4,5];
+                            formater = ['M', 'G', 'T', 'P'];
+                            var i;
+                            for (i= 0; i < exponent.length; i++)
+                            {
+                              larger_num = Math.pow(K,exponent[i]);
+                              if (this.y < larger_num * K) {
+                                this.y = (1.0*this.y/larger_num).toFixed(2);
+                                break;
+                              }
+                            }
+                            return '<b>'+ this.point.name +'</b>: '+ Highcharts.numberFormat(this.percentage, 1) +' % : ' + this.y + formater[i];
+                          }
                         }
                     }
                 }

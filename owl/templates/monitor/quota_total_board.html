@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load extended_filter %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/task/">Tasks</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/user/">Users</a>
+        </li>
+        <li class="active">
+        <a href="/monitor/cluster/{{ cluster.id }}/total/">Total</a>
+        </li>
+    </ul>
+
+    <div class="row">
+        <div class="span12">
+            <h3>Quota distribution on users</h3>
+        </div>
+    </div>
+    <div class="row">
+        <div class="span6"> {{ tsdb_quota_total_chart }} </div>
+        <div class="span6"> {{ tsdb_space_quota_total_chart }} </div>
+    </div>
+    <div class="row">
+        <div class="span12"><h3>Quota total used</h3></div>
+    </div>
+    <div class="row">
+        <div class = "span6">
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ tsdb_quota_total_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+                <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ tsdb_quota_total_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{tsdb_quota_total_query|pic_heigth}}&png" />
+            </a>
+        </div>
+        <div class = "span6">
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ tsdb_space_quota_total_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+                <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ tsdb_space_quota_total_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{tsdb_space_quota_total_query|pic_heigth}}&png" />
+            </a>
+        </div>
+    </div>
+{% endblock %}

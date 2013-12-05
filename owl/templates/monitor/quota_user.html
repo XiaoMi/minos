@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load extended_filter %}
+
+{% block content %}
+    <ul class="breadcrumb">
+        <li>
+            <a href="/monitor/service/{{ cluster.service.id }}">{{ cluster.service.name }}</a> <span
+                class="divider">/</span>
+        </li>
+        <li class="active">{{ cluster.name }}</li>
+    </ul>
+    <ul class="nav nav-pills">
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/task/">Tasks</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/user/">Users</a>
+        </li>
+        <li>
+        <a href="/monitor/cluster/{{ cluster.id }}/total/">Total</a>
+        </li>
+    </ul>
+
+    <div class="row">
+        <div class="span12"><h3>Quota used information</h3></div>
+    </div>
+    <div class="row">
+        <div class = "span6">
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+                <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ used_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{used_quota_query|pic_heigth}}&png" />
+            </a>
+        </div>
+        <div class = "span6">
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_space_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+                <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ used_space_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{used_space_quota_query|pic_heigth}}&png" />
+            </a>
+        </div>
+    </div>
+{% endblock %}

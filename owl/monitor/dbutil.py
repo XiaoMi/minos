@@ -13,7 +13,7 @@ from DBUtils.PooledDB import PooledDB
 from django.conf import settings
 from django.utils import timezone
 
-from models import Service, Cluster, Job, Task, Status
+from models import Service, Cluster, Quota, Job, Task, Status
 from models import Table, RegionServer, HBaseCluster, Region
 from models import Counter
 from django.db.models import Sum
@@ -324,6 +324,12 @@ def get_regionserver(id):
   except RegionServer.DoesNotExist:
     return None
 
+def get_quota(id):
+  try:
+    return Quota.objects.get(id = id)
+  except Quota.DoesNotExist:
+    return None
+
 def get_regionservers_with_active_replication_metrics_by_cluster(cluster):
   return RegionServer.objects.filter(cluster = cluster,
                                      last_attempt_time__gte = alive_time_threshold(),
@@ -416,6 +422,23 @@ def get_quota_summary(cluster):
   except Exception as e:
     logger.warning("Failed to get quota for cluster %r: %r", cluster.name, e)
     return []
+
+def format_quota_data(quota_item):
+  if not quota_item.isdigit():
+    return 0
+  else:
+    return int(quota_item)
+
+def get_quota_distribution(cluster):
+  dirs = get_quota_summary(cluster)
+  tsdb_quota_total = {}
+  tsdb_space_quota_total = {}
+
+  for dir in dirs:
+    tsdb_quota_total[dir.name] = ((dir.id, format_quota_data(dir.used_quota)))
+    tsdb_space_quota_total[dir.name] = ((dir.id, format_quota_data(dir.used_space_quota)))
+
+  return (tsdb_quota_total, tsdb_space_quota_total)
 
 def update_regions_for_region_server_metrics(regions):
   all_update_metrics = []

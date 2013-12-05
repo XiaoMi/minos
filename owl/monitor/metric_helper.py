@@ -106,6 +106,9 @@ def tsdb_job_metrics_view_config(job):
 def make_metric_query(endpoint, group, key):
   return "&m=sum:%s{host=%s,group=%s}&o=" % (key, endpoint, group)
 
+def make_quota_query(cluster_name, user_id, key):
+  return "&m=sum:%s{cluster=%s,user_id=%s}&o=" % (key, cluster_name, user_id)
+
 def make_metrics_query_for_task(endpoint, task):
   metrics = []
   task_view_config = task_metrics_view_config(task)

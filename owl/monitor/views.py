@@ -149,6 +149,42 @@ def show_cluster_table_board(request, id):
   }
   return respond(request, 'monitor/hbase_table_board.html', params)
 
+#url: /cluster/$id/total/
+def show_quota_total_board(request, id):
+  cluster = dbutil.get_cluster(id)
+  if cluster.service.name != 'hdfs':
+    return HttpResponse('')
+
+  tsdb_quota_total, tsdb_space_quota_total = dbutil.get_quota_distribution(cluster)
+  params = {
+    'chart_id': 'used_quota_total',
+    'chart_title': 'total name quota on users',
+    'request_dist': tsdb_quota_total,
+    'base_url': '/monitor/user/',
+  }
+  tsdb_quota_total_chart = loader.get_template('monitor/requests_dist_pie_chart.tpl').render(Context(params))
+
+  params = {
+    'chart_id': 'used_space_quota_total',
+    'chart_title': 'total used space on users',
+    'request_dist': tsdb_space_quota_total,
+    'base_url': '/monitor/user/',
+  }
+  tsdb_space_quota_total_chart = loader.get_template('monitor/requests_dist_pie_chart.tpl').render(Context(params))
+
+  tsdb_quota_total_query = [metric_helper.make_quota_query(cluster.name, 'used_quota_total', 'used_quota')]
+  tsdb_space_quota_total_query = [metric_helper.make_quota_query(cluster.name,
+    'used_space_quota_total', 'used_space_quota')]
+
+  params = {
+    'cluster': cluster,
+    'tsdb_quota_total_chart': tsdb_quota_total_chart,
+    'tsdb_space_quota_total_chart': tsdb_space_quota_total_chart,
+    'tsdb_quota_total_query': tsdb_quota_total_query,
+    'tsdb_space_quota_total_query': tsdb_space_quota_total_query,
+  }
+  return respond(request, 'monitor/quota_total_board.html', params)
+
 def is_system_table(table):
   system_table_names = ('-ROOT-', '.META.', '_acl_')
   return table.name in system_table_names
@@ -343,6 +379,21 @@ def show_regionserver(request, id):
     'tsdb_write_query': tsdb_write_query,
   }
   return respond(request, 'monitor/hbase_regionserver.html', params)
+
+#url: /user/$user_id
+def show_user_quota(request, id):
+  quota = dbutil.get_quota(id)
+  cluster = quota.cluster
+
+  used_quota_query = [metric_helper.make_quota_query(cluster.name, quota.name, 'used_quota')]
+  used_space_quota_query = [metric_helper.make_quota_query(cluster.name, quota.name, 'used_space_quota')]
+
+  params = {
+    'cluster': cluster,
+    'used_quota_query': used_quota_query,
+    'used_space_quota_query': used_space_quota_query,
+  }
+  return respond(request, 'monitor/quota_user.html', params)
 
 #url: /job/$id/
 def show_job(request, id):
