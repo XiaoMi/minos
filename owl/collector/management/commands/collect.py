@@ -75,9 +75,9 @@ class CollectorConfig:
 
   def __init__(self, args, options):
     # Parse collector config.
-    config_path = os.path.join(deploy_utils.get_config_dir(), 'owl/collector.cfg')
-    self.args = args
     self.options = options
+    config_path = os.path.join(deploy_utils.get_config_dir(), 'owl', self.options['collector_cfg'])
+    self.args = args
     self.config = self.parse_config_file(config_path)
     self.services = {}
     for service_name in self.config.get("collector", "services").split():
@@ -200,10 +200,14 @@ class MetricSource:
       return
     # analyze hbase metric
     if self.task.job.cluster.service.name == 'hbase':
+      start_time = time.time()
       if self.task.job.name == 'master':
         self.analyze_hbase_master_metrics(metrics)
       elif self.task.job.name == 'regionserver':
         self.analyze_hbase_region_server_metrics(metrics)
+
+      logger.info("%r spent %f seconds for analyzing metrics for hbase",
+                  self.task, time.time() - start_time)
 
   def analyze_hbase_region_server_metrics(self, metrics):
     region_server_name = None
@@ -308,8 +312,10 @@ class MetricSource:
           self.reset_aggregated_metrics(rs_record)
 
           # we read out all regions belong to this region server and build a map
-          all_regions_in_rs = Region.objects.filter(region_server = rs_record)
+#          all_regions_in_rs = Region.objects.filter(region_server = rs_record)
+          all_regions_in_rs = dbutil.get_alive_regions_by_rs(rs_record)
           all_regions_map = {}
+          logger.info("%r Finish get region: %d", self.task, len(all_regions_in_rs))
           for region in all_regions_in_rs:
             all_regions_map[region.name] = region
 
@@ -317,7 +323,12 @@ class MetricSource:
           for region_metrics in regionsLoad:
             region_value = region_metrics['value']
             region_name = region_value['nameAsString']
-            table_name, startkey, region_id = region_name.split(',')
+            try:
+              table_name, startkey, region_id = region_name.split(',')
+            except Exception as e:
+              logger.warning("%r failed to get region name: %r, %s", self.task, e, region_name)
+              continue
+
             region_metrics = {}
 
             if table_name not in tables:
@@ -341,6 +352,8 @@ class MetricSource:
               logger.info("%r get_or_create region in region_server from mysql, consume=%s, region_name=%s, buffered_rs=%s, get_rs=%s",
                 self.task, str((datetime.datetime.now() - begin).total_seconds()), region_name, rs_record.name, region_record.region_server.name)
 
+
+            logger.info("%r Finish analyze regionsLoad", self.task)
 
             region_record.region_server = rs_record
             region_record.analyze_region_record(region_value, self.task.last_attempt_time)
@@ -778,6 +791,17 @@ class Command(BaseCommand):
         action="store_true",
         default=False,
         help="Use thread pool to store metrics to database if the flag is on."),
+      make_option(
+        "--collector_cfg",
+        default="collector.cfg",
+        help="Specify collector configuration file"
+      ),
+      make_option(
+        "--clear_old_tasks",
+        action="store_true",
+        default=False,
+        help="Set true for clear old tasks"
+      ),
   )
 
   def handle(self, *args, **options):
@@ -790,6 +814,9 @@ class Command(BaseCommand):
     self.stdout.write("options: %r\n" % options)
 
     self.collector_config = CollectorConfig(self.args, self.options)
+    if self.options['clear_old_tasks']:
+      self.clear_old_tasks()
+
     self.update_active_tasks()
     self.region_operation_aggregator = RegionOperationMetricAggregator(self.collector_config)
     # we start to aggregate region operation metric after one period
@@ -797,13 +824,14 @@ class Command(BaseCommand):
         self.region_operation_aggregator.aggregate_region_operation_metric)
     self.fetch_metrics()
 
-  def update_active_tasks(self):
+  def clear_old_tasks():
     # Mark all current tasks as deactive.
     Service.objects.all().update(active=False)
     Cluster.objects.all().update(active=False)
     Job.objects.all().update(active=False)
     Task.objects.all().update(active=False)
 
+  def update_active_tasks(self):
     # Add all active tasks
     self.metric_sources = []
     for service_name, service in self.collector_config.services.iteritems():

@@ -105,6 +105,13 @@ def generate_perf_counter_for_task(result):
 def get_alive_tasks():
   return Task.objects.filter(active=True, last_status=Status.OK).all()
 
+def get_alive_regions_by_rs(rs_record):
+  return Region.objects.filter(region_server = rs_record,
+                               last_attempt_time__gt=region_alive_threshold())
+
+def region_alive_threshold():
+  return datetime.datetime.utcfromtimestamp(time.time() - 60*24).replace(tzinfo=timezone.utc)
+
 def getTableAvailability(cluster, table):
   group = 'infra-hbase-' + cluster
   name = table + '-Availability'
