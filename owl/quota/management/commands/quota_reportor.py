@@ -75,7 +75,7 @@ class QuotaReportor:
       cluster_report[quota_record.name] = quota_record
 
   def send_report_mail(self):
-    # self.send_user_report_mail()
+    self.send_user_report_mail()
     self.send_cluster_report_mail()
     self.alert_to_not_healthy_users()
 
