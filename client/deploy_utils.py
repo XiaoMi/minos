@@ -516,31 +516,37 @@ def bootstrap_job(args, artifact, service, service_config, host, job_name, insta
   supervisor_client = get_supervisor_client(host, service,
       service_config.cluster.name, job_name, instance_id)
 
-  if (service_config.cluster.package_name and service_config.cluster.revision
-      and service_config.cluster.timestamp):
-    message = supervisor_client.bootstrap(artifact,
-        package_name=service_config.cluster.package_name,
-        revision=service_config.cluster.revision,
-        timestamp=service_config.cluster.timestamp,
-        cleanup_token=cleanup_token,
-        bootstrap_script=bootstrap_script,
-        data_dir_indexes=data_dir_indexes,
-        **config_files)
-  elif args.update_package:
-    message = supervisor_client.bootstrap(artifact, force_update=True,
-        cleanup_token=cleanup_token, bootstrap_script=bootstrap_script,
-        data_dir_indexes=data_dir_indexes, **config_files)
-  else:
-    message = supervisor_client.bootstrap(artifact,
-        package_name=args.package_name, revision=args.revision,
-        timestamp=args.timestamp, cleanup_token=cleanup_token,
-        bootstrap_script=bootstrap_script, data_dir_indexes=data_dir_indexes,
-        **config_files)
-  if SUPERVISOR_SUCCESS == message:
-    Log.print_success("Bootstrap task %d of %s on %s(%d) success" % (
-      task_id, job_name, host, real_instance_id))
-  else:
-    Log.print_critical("Bootstrap task %d of %s on %s(%d) fail: %s" % (
+  try:
+    if (service_config.cluster.package_name and service_config.cluster.revision
+        and service_config.cluster.timestamp):
+      message = supervisor_client.bootstrap(artifact,
+          package_name=service_config.cluster.package_name,
+          revision=service_config.cluster.revision,
+          timestamp=service_config.cluster.timestamp,
+          cleanup_token=cleanup_token,
+          bootstrap_script=bootstrap_script,
+          data_dir_indexes=data_dir_indexes,
+          **config_files)
+    elif args.update_package:
+      message = supervisor_client.bootstrap(artifact, force_update=True,
+          cleanup_token=cleanup_token, bootstrap_script=bootstrap_script,
+          data_dir_indexes=data_dir_indexes, **config_files)
+    else:
+      message = supervisor_client.bootstrap(artifact,
+          package_name=args.package_name, revision=args.revision,
+          timestamp=args.timestamp, cleanup_token=cleanup_token,
+          bootstrap_script=bootstrap_script, data_dir_indexes=data_dir_indexes,
+          **config_files)
+    if SUPERVISOR_SUCCESS == message:
+      Log.print_success("Bootstrap task %d of %s on %s(%d) success" % (
+        task_id, job_name, host, real_instance_id))
+    else:
+      Log.print_critical("Bootstrap task %d of %s on %s(%d) fail: %s" % (
+        task_id, job_name, host, real_instance_id, message))
+
+  except BaseException, e:
+    message = str(e)
+    Log.print_error("Bootstrap task %d of %s on %s(%d) fail: %s" % (
       task_id, job_name, host, real_instance_id, message))
 
 def start_job(args, artifact, service, service_config, host, job_name,

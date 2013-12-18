@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import socket
 import xmlrpclib
 
 class SupervisorClient:
@@ -122,8 +123,8 @@ class SupervisorClient:
       else:
         message = self.proxy.deployment.bootstrap(self.service, self.cluster,
           self.job, config_dict, self.instance_id)
-    except xmlrpclib.Fault, f:
-      message = str(f)
+    except (xmlrpclib.Error, socket.error), e:
+      raise e
     return message
 
   def start(self, artifact, force_update=False, package_name='', revision='',
@@ -148,8 +149,8 @@ class SupervisorClient:
       else:
         message = self.proxy.deployment.start(self.service, self.cluster,
           self.job, config_dict, self.instance_id)
-    except xmlrpclib.Fault, f:
-      message = str(f)
+    except (xmlrpclib.Error, socket.error), e:
+      message = str(e)
     return message
 
   def stop(self):
@@ -163,8 +164,8 @@ class SupervisorClient:
       else:
         message = self.proxy.deployment.stop(self.service, self.cluster,
           self.job, dict(), self.instance_id)
-    except xmlrpclib.Fault, f:
-      message = str(f)
+    except (xmlrpclib.Error, socket.error), e:
+      message = str(e)
     return message
 
   def show(self):
@@ -178,8 +179,8 @@ class SupervisorClient:
       else:
         message = self.proxy.deployment.show(self.service, self.cluster,
           self.job, dict(), self.instance_id)
-    except xmlrpclib.Fault, f:
-      message = str(f)
+    except (xmlrpclib.Error, socket.error), e:
+      message = str(e)
     return message
 
   def restart(self, start_script, **config_files):
@@ -208,8 +209,8 @@ class SupervisorClient:
       else:
         message = self.proxy.deployment.cleanup(self.service, self.cluster,
           self.job, config_dict, self.instance_id)
-    except xmlrpclib.Fault, f:
-      message = str(f)
+    except (xmlrpclib.Error, socket.error), e:
+      message = str(e)
     return message
 
 if __name__ == '__main__':
