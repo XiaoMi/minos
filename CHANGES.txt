@@ -1,0 +1,10 @@
+Minos Change Log
+
+2013/12/18
+1. Support deploying multiple instances on single host
+2. Support deploying and monitoring supervisor via puppet
+3. Support customerized alert receivers for different clusters
+4. Make log level configurable
+5. Show namespace and diskspace quota usage on OWL
+6. Make command lines arguments configurable
+7. Fix lots of bugs
