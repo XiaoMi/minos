@@ -6,5 +6,5 @@ Minos Change Log
 3. Support customerized alert receivers for different clusters
 4. Make log level configurable
 5. Show namespace and diskspace quota usage on OWL
-6. Make command lines arguments configurable
+6. Make command line arguments configurable
 7. Fix lots of bugs
