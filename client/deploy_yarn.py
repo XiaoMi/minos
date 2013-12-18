@@ -11,14 +11,6 @@ from log import Log
 
 ALL_JOBS = ["resourcemanager", "nodemanager", "historyserver", "proxyserver"]
 
-JOB_MAIN_CLASS = {
-  "resourcemanager":
-    "org.apache.hadoop.yarn.server.resourcemanager.ResourceManager",
-  "nodemanager": "org.apache.hadoop.yarn.server.nodemanager.NodeManager",
-  "historyserver": "org.apache.hadoop.mapreduce.v2.hs.JobHistoryServer",
-  "proxyserver": "org.apache.hadoop.yarn.server.webproxy.WebAppProxyServer",
-}
-
 SHELL_COMMAND_INFO = {
   "rmadmin": ("org.apache.hadoop.yarn.server.resourcemanager.tools.RMAdmin",
       "admin tools"),
@@ -40,7 +32,7 @@ def get_yarn_service_config(args):
 def generate_metrics_config(args, host, job_name, instance_id=-1):
   job = args.yarn_config.jobs[job_name]
   supervisor_client = deploy_utils.get_supervisor_client(host, "yarn",
-      args.yarn_config.cluster.name, job_name, instance_id)
+      args.yarn_config.cluster.name, job_name, instance_id=instance_id)
 
   ganglia_switch = "# "
   if args.yarn_config.cluster.ganglia_address:
@@ -79,11 +71,11 @@ def generate_configs(args, host, job_name, instance_id):
 
   return config_files
 
-def generate_run_scripts_params(args, host, job_name, instance_id):
+def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
   job = args.yarn_config.jobs[job_name]
 
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "yarn", args.yarn_config.cluster.name, job_name, instance_id)
+      "yarn", args.yarn_config.cluster.name, job_name, instance_id=instance_id)
 
   artifact_and_version = "hadoop-" + args.yarn_config.cluster.version
 
@@ -99,56 +91,22 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
     service_env += "export %s=$package_dir\n" % (component_path)
   log_level = deploy_utils.get_service_log_level(args, args.yarn_config)
 
+  params = job.get_arguments(args, args.yarn_config.cluster, args.yarn_config.jobs,
+    args.yarn_config.arguments_dict, job_name, host_id, instance_id)
+
   script_dict = {
       "artifact": artifact_and_version,
       "job_name": job_name,
       "jar_dirs": jar_dirs,
       "run_dir": supervisor_client.get_run_dir(),
       "service_env": service_env,
-      "params":
-          '-Xmx%dm ' % job.xmx +
-          '-Xms%dm ' % job.xms +
-          '-Xmn%dm ' % job.xmn +
-          '-XX:MaxDirectMemorySize=%dm ' % job.max_direct_memory +
-          '-XX:MaxPermSize=%dm ' % job.max_perm_size +
-          '-XX:+DisableExplicitGC ' +
-          '-XX:+HeapDumpOnOutOfMemoryError ' +
-          '-XX:HeapDumpPath=$log_dir ' +
-          '-XX:+PrintGCApplicationStoppedTime ' +
-          '-XX:+UseConcMarkSweepGC ' +
-          '-XX:CMSInitiatingOccupancyFraction=80 ' +
-          '-XX:+UseMembar ' +
-          '-verbose:gc ' +
-          '-XX:+PrintGCDetails ' +
-          '-XX:+PrintGCDateStamps ' +
-          '-Xloggc:$run_dir/stdout/%s_gc_${start_time}.log ' % job_name +
-          '-Dproc_%s ' % job_name +
-          '-Djava.net.preferIPv4Stack=true ' +
-          '-Dyarn.log.dir=$log_dir ' +
-          '-Dyarn.pid=$pid ' +
-          '-Dyarn.cluster=%s ' % args.yarn_config.cluster.name +
-          '-Dyarn.log.level=%s ' % log_level +
-          '-Dhadoop.policy.file=hadoop-policy.xml ' +
-          '-Dhadoop.home.dir=$package_dir ' +
-          '-Dhadoop.id.str=%s ' % args.remote_user +
-          '-Djava.security.krb5.conf=$run_dir/krb5.conf ' +
-          get_job_specific_params(args, job_name)
+      "params": params,
   }
 
-  if deploy_utils.is_security_enabled(args):
-    class_path_root = "$package_dir/share/hadoop"
-    boot_class_path = ("%s/common/lib/hadoop-security-%s.jar" % (
-          class_path_root, args.hdfs_config.cluster.version))
-    script_dict["params"] += "-Xbootclasspath/p:%s " % boot_class_path
-
-  script_dict["params"] += JOB_MAIN_CLASS[job_name]
   return script_dict
 
-def get_job_specific_params(args, job_name):
-  return ""
-
-def generate_start_script(args, host, job_name, instance_id):
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+def generate_start_script(args, host, job_name, host_id, instance_id):
+  script_params = generate_run_scripts_params(args, host, job_name, host_id, instance_id)
   return deploy_utils.create_run_script(
       "%s/start.sh.tmpl" % deploy_utils.get_template_dir(),
       script_params)
@@ -172,12 +130,12 @@ def cleanup(args):
         deploy_utils.cleanup_job("yarn", args.yarn_config,
           hosts[host_id].ip, job_name, instance_id, cleanup_token)
 
-def bootstrap_job(args, host, job_name, instance_id, cleanup_token):
+def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
   # parse the service_config according to the instance_id
-  args.yarn_config.parse_generated_config_files(args, instance_id)
+  args.yarn_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   deploy_utils.bootstrap_job(args, "hadoop", "yarn",
       args.yarn_config, host, job_name, instance_id, cleanup_token, '0')
-  start_job(args, host, job_name, instance_id)
+  start_job(args, host, job_name, host_id, instance_id)
 
 def bootstrap(args):
   get_yarn_service_config(args)
@@ -189,13 +147,13 @@ def bootstrap(args):
     for host_id in args.task_map.keys() or hosts.keys():
       for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        bootstrap_job(args, hosts[host_id].ip, job_name, instance_id, cleanup_token)
+        bootstrap_job(args, hosts[host_id].ip, job_name, host_id, instance_id, cleanup_token)
 
-def start_job(args, host, job_name, instance_id):
+def start_job(args, host, job_name, host_id, instance_id):
   # parse the service_config according to the instance_id
-  args.yarn_config.parse_generated_config_files(args, instance_id)
+  args.yarn_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   config_files = generate_configs(args, host, job_name, instance_id)
-  start_script = generate_start_script(args, host, job_name, instance_id)
+  start_script = generate_start_script(args, host, job_name, host_id, instance_id)
   http_url = deploy_utils.get_http_service_uri(host,
     args.yarn_config.jobs[job_name].base_port, instance_id)
   deploy_utils.start_job(args, "hadoop", "yarn", args.yarn_config,
@@ -212,7 +170,7 @@ def start(args):
     for host_id in args.task_map.keys() or hosts.keys():
       for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
 
 def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("yarn", args.yarn_config,
@@ -252,7 +210,7 @@ def restart(args):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
         deploy_utils.wait_for_job_stopping("yarn",
           args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
 
 def show(args):
   get_yarn_service_config(args)
@@ -362,7 +320,7 @@ def rolling_update(args):
       stop_job(args, hosts[host_id].ip, job_name, instance_id)
       deploy_utils.wait_for_job_stopping("yarn",
         args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, job_name, instance_id)
+      start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
       deploy_utils.wait_for_job_starting("yarn",
         args.yarn_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
       wait_time = args.time_interval

@@ -275,7 +275,7 @@ def get_root_dir(service):
     return get_deploy_config().get_impala_root()
   Log.print_critical("Unknow service: %s" % service)
 
-def get_supervisor_client(host, service, cluster, job, instance_id):
+def get_supervisor_client(host, service, cluster, job, instance_id=-1):
   '''
   A factory method to construct a supervisor client object.
 

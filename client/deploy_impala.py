@@ -33,15 +33,16 @@ def generate_configs(args):
 
   return config_files
 
-def generate_run_scripts_params(args, host, job_name, instance_id):
+def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "impala", args.impala_config.cluster.name, job_name, instance_id)
+      "impala", args.impala_config.cluster.name, job_name, instance_id=instance_id)
   job = args.impala_config.jobs[job_name]
-  impalad = args.impala_config.jobs["impalad"]
-  statestored = args.impala_config.jobs["statestored"]
 
   artifact_and_version = "impala-" + args.impala_config.cluster.version
   log_level = deploy_utils.get_service_log_level(args, args.impala_config)
+
+  params = job.get_arguments(args, args.impala_config.cluster, args.impala_config.jobs,
+    args.impala_config.arguments_dict, job_name, host_id, instance_id)
 
   script_dict = {
     "artifact": artifact_and_version,
@@ -49,41 +50,13 @@ def generate_run_scripts_params(args, host, job_name, instance_id):
     "run_dir": supervisor_client.get_run_dir(),
     "ticket_cache": "$run_dir/impala.tc",
     "log_level": log_level,
-    "params":
-      "-webserver_port=%d " % (service_config.get_base_port(job.base_port, instance_id) + 1) +
-      "-be_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 2) +
-      "-planservice_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 3) +
-      "-state_store_port=%d " % (service_config.get_base_port(statestored.base_port, instance_id)) +
-      "-state_store_subscriber_port=%d " % (service_config.get_base_port(statestored.base_port, instance_id) + 1) +
-      "-mem_limit=20% " + # TODO make this configurable
-      "-state_store_host=%s " % statestored.hosts[0].ip +
-      "-kerberos_reinit_interval=1200 " + # 20hours
-      "-webserver_doc_root=$run_dir/package " +
-      "-webserver_interface=%s " % host +
-      #"-use_statestore=false " +
-      "-log_dir=$run_dir/log " +
-      "-v=2 " +
-      "-logbuflevel=-1 " +
-      "-sasl_path=$run_dir/package/lib/sasl2 ",
+    "params": params,
   }
-
-  if job_name == "impalad":
-    script_dict["params"] += "-beeswax_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id))
-    script_dict["params"] += "-hs2_port=%d " % (service_config.get_base_port(impalad.base_port, instance_id) + 4)
-
-  if deploy_utils.is_security_enabled(args):
-    script_dict["params"] += "-principal=%s/hadoop@%s " % (
-        args.impala_config.cluster.kerberos_username or "impala",
-        args.impala_config.cluster.kerberos_realm)
-    script_dict["params"] += "-keytab_file=%s/%s.keytab " % (
-        deploy_utils.HADOOP_CONF_PATH,
-        args.impala_config.cluster.kerberos_username or "impala")
-    script_dict["params"] += "-tgt_file=$run_dir/impala.tc "
 
   return script_dict
 
-def generate_start_script(args, host, job_name, instance_id):
-  script_params = generate_run_scripts_params(args, host, job_name, instance_id)
+def generate_start_script(args, host, job_name, host_id, instance_id):
+  script_params = generate_run_scripts_params(args, host, job_name, host_id, instance_id)
   return deploy_utils.create_run_script(
       "%s/impala/start.sh.tmpl" % deploy_utils.get_template_dir(),
       script_params)
@@ -106,12 +79,12 @@ def cleanup(args):
         deploy_utils.cleanup_job("impala", args.impala_config,
           hosts[host_id].ip, job_name, instance_id, cleanup_token)
 
-def bootstrap_job(args, host, job_name, instance_id, cleanup_token):
+def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
   # parse the service_config according to the instance_id
-  args.impala_config.parse_generated_config_files(args, instance_id)
+  args.impala_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   deploy_utils.bootstrap_job(args, "impala", "impala",
       args.impala_config, host, job_name, instance_id, cleanup_token, '0')
-  start_job(args, host, job_name, instance_id)
+  start_job(args, host, job_name, host_id, instance_id)
 
 def bootstrap(args):
   get_impala_service_config(args)
@@ -123,13 +96,13 @@ def bootstrap(args):
     for host_id in args.task_map.keys() or hosts.keys():
       for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        bootstrap_job(args, hosts[host_id].ip, job_name, instance_id, cleanup_token)
+        bootstrap_job(args, hosts[host_id].ip, job_name, host_id, instance_id, cleanup_token)
 
-def start_job(args, host, job_name, instance_id):
+def start_job(args, host, job_name, host_id, instance_id):
   # parse the service_config according to the instance_id
-  args.impala_config.parse_generated_config_files(args, instance_id)
+  args.impala_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   config_files = generate_configs(args)
-  start_script = generate_start_script(args, host, job_name, instance_id)
+  start_script = generate_start_script(args, host, job_name, host_id, instance_id)
   http_url = deploy_utils.get_http_service_uri(host,
     args.impala_config.jobs[job_name].base_port, instance_id)
   deploy_utils.start_job(args, "impala", "impala", args.impala_config,
@@ -146,7 +119,7 @@ def start(args):
     for host_id in args.task_map.keys() or hosts.keys():
       for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
 
 def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("impala", args.impala_config, host, job_name, instance_id)
@@ -185,7 +158,7 @@ def restart(args):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
         deploy_utils.wait_for_job_stopping("impala",
           args.impala_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, instance_id)
+        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
 
 def show(args):
   get_impala_service_config(args)
@@ -244,7 +217,7 @@ def rolling_update(args):
       stop_job(args, hosts[host_id].ip, job_name, instance_id)
       deploy_utils.wait_for_job_stopping("impala",
         args.impala_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, job_name, instance_id)
+      start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
       deploy_utils.wait_for_job_starting("impala",
         args.impala_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
       wait_time = args.time_interval

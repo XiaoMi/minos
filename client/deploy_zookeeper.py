@@ -66,7 +66,7 @@ def generate_run_scripts(args):
 
 def generate_bootstrap_script(args, host, job_name, host_id, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-    "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id)
+    "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id=instance_id)
   data_dir = supervisor_client.get_available_data_dirs()[0]
   myid_file = "%s/%s" % (data_dir, MYID_FILE)
 
@@ -81,9 +81,9 @@ def generate_bootstrap_script(args, host, job_name, host_id, instance_id):
       '%s/bootstrap_zk.sh.tmpl' % deploy_utils.get_template_dir(),
       script_dict)
 
-def generate_start_script(args, host, job_name, instance_id):
+def generate_start_script(args, host, job_name, host_id, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
-      "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id)
+      "zookeeper", args.zookeeper_config.cluster.name, job_name, instance_id=instance_id)
   run_dir = supervisor_client.get_run_dir()
 
   artifact_and_version = "zookeeper-" + args.zookeeper_config.cluster.version
@@ -94,43 +94,16 @@ def generate_start_script(args, host, job_name, instance_id):
   job = args.zookeeper_config.jobs["zookeeper"]
   log_level = deploy_utils.get_service_log_level(args, args.zookeeper_config)
 
+  params = job.get_arguments(args, args.zookeeper_config.cluster, args.zookeeper_config.jobs,
+    args.zookeeper_config.arguments_dict, job_name, host_id, instance_id)
+
   script_dict = {
       "artifact": artifact_and_version,
       "job_name": job_name,
       "jar_dirs": jar_dirs,
       "run_dir": run_dir,
-      "params":
-          '-Xmx%dm ' % job.xmx +
-          '-Xms%dm ' % job.xms +
-          '-Xmn%dm ' % job.xmn +
-          '-XX:MaxDirectMemorySize=%dm ' % job.max_direct_memory +
-          '-XX:MaxPermSize=%dm ' % job.max_perm_size +
-          '-XX:+DisableExplicitGC ' +
-          '-XX:+HeapDumpOnOutOfMemoryError ' +
-          '-XX:HeapDumpPath=$log_dir ' +
-          '-XX:+PrintGCApplicationStoppedTime ' +
-          '-XX:+UseConcMarkSweepGC ' +
-          '-XX:CMSInitiatingOccupancyFraction=80 ' +
-          '-XX:+UseMembar ' +
-          '-verbose:gc ' +
-          '-XX:+PrintGCDetails ' +
-          '-XX:+PrintGCDateStamps ' +
-          '-Xloggc:$run_dir/stdout/zk_gc_${start_time}.log ' +
-          '-Djava.net.preferIPv4Stack=true ' +
-          '-Dzookeeper.log.dir=$log_dir ' +
-          '-Dzookeeper.log.level=%s ' % log_level +
-          '-Dzookeeper.cluster=%s ' % args.zookeeper_config.cluster.name +
-          '-Dzookeeper.tracelog.dir=$log_dir ',
+      "params": params,
   }
-
-  # Config security
-  if deploy_utils.is_security_enabled(args):
-    script_dict["params"] += '-Dzookeeper.superUser=zk_admin '
-    script_dict["params"] += '-Djava.security.auth.login.config=$run_dir/jaas.conf '
-    script_dict["params"] += '-Djava.security.krb5.conf=$run_dir/krb5.conf '
-
-  script_dict["params"] += 'org.apache.zookeeper.server.quorum.QuorumPeerMain '
-  script_dict["params"] += '$run_dir/zookeeper.cfg'
 
   return deploy_utils.create_run_script(
       '%s/start.sh.tmpl' % deploy_utils.get_template_dir(),
@@ -162,13 +135,13 @@ def cleanup(args):
 
 def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
   # parse the service_config according to the instance_id
-  args.zookeeper_config.parse_generated_config_files(args, instance_id)
+  args.zookeeper_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   bootstrap_script = generate_bootstrap_script(args, host, job_name, host_id, instance_id)
   deploy_utils.bootstrap_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
       host, job_name, instance_id, cleanup_token, '0', bootstrap_script)
 
   # start job after bootstrapping.
-  start_job(args, host, job_name, instance_id)
+  start_job(args, host, job_name, host_id, instance_id)
 
 def bootstrap(args):
   get_zk_service_config(args)
@@ -182,12 +155,12 @@ def bootstrap(args):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
       bootstrap_job(args, hosts[host_id].ip, "zookeeper", host_id, instance_id, cleanup_token)
 
-def start_job(args, host, job_name, instance_id):
+def start_job(args, host, job_name, host_id, instance_id):
   # parse the service_config according to the instance_id
-  args.zookeeper_config.parse_generated_config_files(args, instance_id)
+  args.zookeeper_config.parse_generated_config_files(args, job_name, host_id, instance_id)
 
   config_files = generate_run_scripts(args)
-  start_script = generate_start_script(args, host, job_name, instance_id)
+  start_script = generate_start_script(args, host, job_name, host_id, instance_id)
   http_url = ''
   deploy_utils.start_job(args, "zookeeper", "zookeeper", args.zookeeper_config,
       host, job_name, instance_id, start_script, http_url, **config_files)
@@ -202,7 +175,7 @@ def start(args):
   for host_id in args.task_map.keys() or hosts.keys():
     for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-      start_job(args, hosts[host_id].ip, "zookeeper", instance_id)
+      start_job(args, hosts[host_id].ip, "zookeeper", host_id, instance_id)
 
 def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("zookeeper", args.zookeeper_config,
@@ -237,7 +210,7 @@ def restart(args):
       instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
       deploy_utils.wait_for_job_stopping("zookeeper",
         args.zookeeper_config.cluster.name, "zookeeper", hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, "zookeeper", instance_id)
+      start_job(args, hosts[host_id].ip, "zookeeper", host_id, instance_id)
 
 def show(args):
   get_zk_service_config(args)
@@ -337,7 +310,7 @@ def rolling_update(args):
       stop_job(args, hosts[host_id].ip, job_name, instance_id)
       deploy_utils.wait_for_job_stopping("zookeeper",
         args.zookeeper_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-      start_job(args, hosts[host_id].ip, job_name, instance_id)
+      start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
       deploy_utils.wait_for_job_starting("zookeeper",
         args.zookeeper_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
       wait_time = args.time_interval

@@ -38,13 +38,13 @@ def parse_task_number(task_id, hosts):
     raise ValueError(str(task_id) + ' is not a valid task of cluster, please check your config')
   return host_id, instance_id
 
-def get_port_addition_result(args, cluster, jobs, instance_id, val):
+def get_port_addition_result(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = JOB_PORT_EXPR_REGEX.match(val)
   job_name = reg_expr.group('job')
   add_num = int(reg_expr.group('num'))
   return get_base_port(jobs[job_name].base_port, instance_id) + add_num
 
-def get_task_port_addition_result(args, cluster, jobs, instance_id, val):
+def get_task_port_addition_result(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = JOB_TASK_PORT_EXPR_REGEX.match(val)
   job_name = reg_expr.group('job')
   task_id = reg_expr.group('task')
@@ -76,7 +76,7 @@ def get_zk_job(args, cluster):
   zk_config = get_service_config(args, "zookeeper", cluster)
   return zk_config.jobs["zookeeper"]
 
-def get_zk_hosts(args, cluster, jobs):
+def get_zk_hosts(args, cluster, jobs, current_job, host_id):
   zk_job = get_zk_job(args, cluster)
   return ",".join(["%s" % (host.ip) for host in zk_job.hosts.itervalues()])
 
@@ -88,18 +88,18 @@ def get_job_host_port_list(job):
         host.ip, get_base_port(job.base_port, instance_id)))
   return host_port_list
 
-def get_zk_hosts_with_port(args, cluster, jobs):
+def get_zk_hosts_with_port(args, cluster, jobs, current_job, host_id):
   zk_job = get_zk_job(args, cluster)
   host_port_list = get_job_host_port_list(zk_job)
   return ",".join(host_port_list)
 
-def get_journalnode_hosts_with_port(args, cluster, jobs):
+def get_journalnode_hosts_with_port(args, cluster, jobs, current_job, host_id):
   hdfs_config = get_service_config(args, "hdfs", cluster)
   jour_job = hdfs_config.jobs["journalnode"]
   host_port_list = get_job_host_port_list(jour_job)
   return ";".join(host_port_list)
 
-def get_zk_server_list(args, cluster, jobs):
+def get_zk_server_list(args, cluster, jobs, current_job, host_id):
   server_list = str()
   job = jobs[jobs.keys()[0]]
   hosts = job.hosts
@@ -117,13 +117,22 @@ def get_supervisor_client(host, service, cluster_name, job, instance_id):
     supervisor_config.get('user'), supervisor_config.get('password'),
     service, cluster_name, job, instance_id)
 
-def get_config_dir(args=None, cluster=None, jobs=None):
+def get_config_dir(args=None, cluster=None, jobs=None, current_job="", host_id=0):
   return deploy_config.get_deploy_config().get_config_dir()
 
-def get_short_user_name(args, cluster=None, jobs=None):
+def get_short_user_name(args, cluster=None, jobs=None, current_job="", host_id=0):
   if not getattr(args, "short_user_name", None):
     args.short_user_name = get_short_user_name_full()[1]
   return args.short_user_name
+
+def get_remote_user(args, cluster, jobs, current_job, host_id):
+  return args.remote_user
+
+def get_current_host(args, cluster, jobs, current_job, host_id):
+  return jobs[current_job].hosts[host_id].ip
+
+def get_hadoop_conf_path(args, cluster, jobs, current_job, host_id):
+  return "/etc/hadoop/conf"
 
 def get_config_path(args):
   return "%s/conf/%s/%s-%s.cfg" % (get_config_dir(),
@@ -157,7 +166,14 @@ def get_specific_dir(host, service, cluster_name, job_name, instance_id, attribu
   elif attribute == "current_package_dir":
     return supervisor_client.get_current_package_dir()
 
-def get_service_job_task_attribute(args, cluster, jobs, instance_id, val):
+def get_service_cluster_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
+  reg_expr = SERVICE_CLUSTER_ATTRIBUTE_REGEX.match(val)
+  service = reg_expr.group('service')
+  attribute = reg_expr.group('attribute')
+  service_config = get_service_config(args, service, cluster)
+  return getattr(service_config.cluster, attribute)
+
+def get_service_job_task_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = SERVICE_JOB_TASK_ATTRIBUTE_REGEX.match(val)
   service = reg_expr.group('service')
   job_name = reg_expr.group('job')
@@ -170,7 +186,7 @@ def get_service_job_task_attribute(args, cluster, jobs, instance_id, val):
   elif attribute == 'base_port':
     return get_base_port(service_config.jobs[job_name].base_port, instance_id)
 
-def get_job_task_attribute(args, cluster, jobs, instance_id, val):
+def get_job_task_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = JOB_TASK_ATTRIBUTE_REGEX.match(val)
   job_name = reg_expr.group('job')
   task_id = reg_expr.group('task')
@@ -181,7 +197,7 @@ def get_job_task_attribute(args, cluster, jobs, instance_id, val):
   elif attribute == 'base_port':
     return get_base_port(jobs[job_name].base_port, instance_id)
 
-def get_section_attribute(args, cluster, jobs, instance_id, val):
+def get_section_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = SECTION_ATTRIBUTE_REGEX.match(val)
   section = reg_expr.group('section')
   attribute = reg_expr.group('attribute')
@@ -193,23 +209,27 @@ def get_section_attribute(args, cluster, jobs, instance_id, val):
     if attribute == "base_port":
       return get_base_port(jobs[section].base_port, section_instance_id)
     else:
-      host = jobs[section].hosts[0].ip
+      if current_job == section:
+        host = jobs[section].hosts[host_id]
+      else: # prevent index over boundary when host_id mapping another job
+        host = jobs[section].hosts[0]
       # the parsing section may not be the job which is being started or bootstrapped,
       # so call get_specific_dir according to the section_instance_id.
-      if jobs[section].hosts[0].instance_num == 1:
+      if host.instance_num == 1:
         section_instance_id = -1
-      return get_specific_dir(host, args.service, cluster.name, section, section_instance_id, attribute)
+      return get_specific_dir(host.ip, args.service, cluster.name, section, section_instance_id, attribute)
 
 
 CLUSTER_NAME_REGEX = re.compile(r'((?P<zk>[a-z0-9]+)-)?([a-z0-9]+)')
 HOST_RULE_REGEX = re.compile(r'host\.(?P<id>\d+)')
 HOST_REGEX = re.compile(r'(?P<host>[\d\.]+)(/(?P<process>\d+))?$')
-VARIABLE_REGEX = re.compile('\$\{(.+?)\}')
+VARIABLE_REGEX = re.compile('%\{(.+?)\}')
 
 SECTION_ATTRIBUTE_REGEX = re.compile('(?P<section>(?!zk\.)\w+)\.(?P<attribute>\w+)$')
 JOB_PORT_EXPR_REGEX = re.compile('(?P<job>\w+)\.base_port[+-](?P<num>\d+)')
 JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribute>\w+)$')
 JOB_TASK_PORT_EXPR_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.base_port[+-](?P<num>\d+)')
+SERVICE_CLUSTER_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.cluster\.(?P<attribute>\w+)$')
 SERVICE_JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribute>\w+)$')
 
 SCHEMA_MAP = {
@@ -217,6 +237,7 @@ SCHEMA_MAP = {
   SECTION_ATTRIBUTE_REGEX : get_section_attribute,
   JOB_TASK_ATTRIBUTE_REGEX : get_job_task_attribute,
   JOB_TASK_PORT_EXPR_REGEX : get_task_port_addition_result,
+  SERVICE_CLUSTER_ATTRIBUTE_REGEX : get_service_cluster_attribute,
   SERVICE_JOB_TASK_ATTRIBUTE_REGEX : get_service_job_task_attribute,
   "zk.hosts" : get_zk_hosts,
   "zk.hosts_with_port" : get_zk_hosts_with_port,
@@ -224,6 +245,9 @@ SCHEMA_MAP = {
   "server_list" : get_zk_server_list,
   "config_dir" : get_config_dir,
   "short_user_name" : get_short_user_name,
+  "remote_user" : get_remote_user,
+  "current_host" : get_current_host,
+  "hadoop_conf_path" : get_hadoop_conf_path,
   # "slaves" : "\n".join(jobs["datanode"].hosts.values()),
 }
 
@@ -232,11 +256,6 @@ COMMON_JOB_SCHEMA = {
     # type must be in {bool, int, float, str}
     # if default_value is None, it means it's NOT an optional parameter.
     "base_port": (int, None),
-    "xmx": (int, None),
-    "xms": (int, None),
-    "xmn": (int, None),
-    "max_direct_memory": (int, None),
-    "max_perm_size": (int, None),
 }
 
 CLUSTER_SCHEMA = {
@@ -254,6 +273,8 @@ CLUSTER_SCHEMA = {
 }
 
 MULTIPLE_INSTANCES_JOBS = ["datanode", "regionserver", "nodemanager", "historyserver", "impalad"]
+ARGUMENTS_TYPE_LIST = ["jvm_args", "system_properties", "main_entry", "extra_args"]
+HEAP_MEMORY_SETTING_LIST = ["-Xmx", "-Xms", "-Xmn", "-Xss"]
 
 class ServiceConfig:
   '''
@@ -265,6 +286,7 @@ class ServiceConfig:
 
     self.cluster_dict = self.config_dict_full["cluster"]
     self.configuration_dict = self.config_dict_full["configuration"]
+    self.arguments_dict = self.config_dict_full["arguments"]
 
     self.cluster = ServiceConfig.Cluster(self.cluster_dict, args.cluster)
     self.jobs = {}
@@ -297,10 +319,18 @@ class ServiceConfig:
     '''
     def __init__(self, job_dict, job_name):
       self.name = job_name
+      self.job_dict = job_dict
       ServiceConfig.parse_params(self, job_name, job_dict, COMMON_JOB_SCHEMA)
       if self.base_port % 100 != 0:
         Log.print_critical("base_port %d is NOT a multiple of 100!" %
                             self.base_port)
+
+      self._parse_hosts_list(job_dict, job_name)
+
+    def _parse_hosts_list(self, job_dict, job_name):
+      '''
+      Parse the hosts list for job
+      '''
       self.hosts = {}
       self.hostnames = {}
       for name, value in job_dict.iteritems():
@@ -331,6 +361,98 @@ class ServiceConfig:
         else:
           self.hosts[host_id] = ServiceConfig.Jobs.Hosts(ip)
 
+    def _generate_arguments_list(self, job_dict, job_name, arguments_dict):
+      '''
+      Generate the arguments lists as follows:
+      job.jvm_args, job.system_properties, job.main_entry, job.extra_args.
+      '''
+      # prevent repeated generation for one job on different hosts/instances
+      if any(getattr(self, args_type, None) != None for args_type in ARGUMENTS_TYPE_LIST):
+        return
+
+      if not job_dict.has_key("arguments"):
+        Log.print_critical("The job %s must be configured with the `arguments` section." \
+          " Please check your configuration file." % job_name)
+
+      job_specific_arguments = job_dict["arguments"]
+      job_common_arguments = arguments_dict[job_name]
+      service_common_arguments = arguments_dict["service_common"]
+
+      self._merge_arguments_dict(job_common_arguments, service_common_arguments)
+      self._merge_arguments_dict(job_specific_arguments, job_common_arguments)
+
+      # set job's attributes: job.jvm_args, job.system_properties, job.main_entry, job.extra_args
+      for args_type in ARGUMENTS_TYPE_LIST:
+        setattr(self, args_type, job_specific_arguments[args_type])
+
+    def _get_argument_key(self, argument):
+      # argument is a 'key=value' pair
+      if argument.find('=') != -1:
+        return argument.split('=')[0]
+      else:
+        # argument is a member of HEAP_MEMORY_SETTING_LIST
+        for member in HEAP_MEMORY_SETTING_LIST:
+          if argument.startswith(member):
+            return member
+        # argument is a normal string without '='
+        return argument
+
+    def _check_and_insert_argument(self, arguments_list, argument):
+      '''
+      Insert the argument into the arguments_list if
+      the arguments_list doesn't contain the argument.
+      '''
+      argument_key = self._get_argument_key(argument)
+
+      for item in arguments_list:
+        item_key = self._get_argument_key(item)
+        if item_key == argument_key:
+          return
+      arguments_list.append(argument)
+
+    def _merge_arguments_dict(self, child_arguments_dict, base_arguments_dict):
+      '''
+      Merge the arguments from the base_arguments_dict to child_arguments_dict,
+      for duplicate items, use the child item to override the base item.
+      '''
+      for args_type in ARGUMENTS_TYPE_LIST:
+        base_arguments_list = base_arguments_dict[args_type]
+        if type(base_arguments_list) != list:
+          base_arguments_list = base_arguments_list.split()
+
+        child_arguments_list = []
+        if child_arguments_dict.has_key(args_type):
+          child_arguments_list = child_arguments_dict[args_type].split()
+
+        for argument in base_arguments_list:
+          self._check_and_insert_argument(child_arguments_list, argument)
+
+        child_arguments_dict[args_type] = child_arguments_list
+
+    def _generate_string_format_arguments(self, args, cluster, jobs, current_job="", host_id=0, instance_id=-1):
+      '''
+      Parse the arguments list and generate/joint the string format arguments.
+      All items in the arguments are connected with ' '.
+      '''
+      arguments_string = ""
+      for type_id in range(len(ARGUMENTS_TYPE_LIST)):
+        args_list = copy.deepcopy(getattr(self, ARGUMENTS_TYPE_LIST[type_id]))
+        for argument_id in range(len(args_list)):
+          if args_list[argument_id].find('%') != -1:
+            args_list[argument_id] = ServiceConfig.parse_item(
+              args, cluster, jobs, current_job, host_id, instance_id, args_list[argument_id])
+
+        # joint the arguments string
+        arguments_string += " ".join(args_list)
+        if type_id < len(ARGUMENTS_TYPE_LIST) - 1:
+          arguments_string += " "
+
+      return arguments_string
+
+    def get_arguments(self, args, cluster, jobs, arguments_dict, current_job="", host_id=0, instance_id=-1):
+      self._generate_arguments_list(self.job_dict, self.name, arguments_dict)
+      return self._generate_string_format_arguments(args, cluster, jobs, current_job, host_id, instance_id)
+
     class Hosts:
       '''
       The class represents all the hosts of a job
@@ -358,11 +480,12 @@ class ServiceConfig:
     '''
     base_config_dict = {}
     child_config_dict = ConfigObj(config_path, file_error=True)
+    arguments_config_dict = {}
 
     if child_config_dict['configuration'].has_key('base'):
       config_path = child_config_dict['configuration']['base']
 
-      if config_path.find('$') != -1:
+      if config_path.find('%') != -1:
         config_path = self.parse_item(None, None, None, item=config_path)
 
       base_config_dict = self.get_config_dict_full(config_path)
@@ -404,28 +527,29 @@ class ServiceConfig:
 
 
   @staticmethod
-  def parse_item(args, cluster, jobs, instance_id=-1, item=None):
+  def parse_item(args, cluster, jobs, current_job="", host_id=0, instance_id=-1, item=None):
     '''
-    Parse item which is enclosed by '${}' in key/value
+    Parse item which is enclosed by '%{}' in key/value
     '''
     reg_expr = VARIABLE_REGEX.findall(item)
     new_item = []
     for iter in range(len(reg_expr)):
       for key, callback in SCHEMA_MAP.iteritems():
         if reg_expr[iter] == key:
-          new_item.append(callback(args, cluster, jobs))
+          new_item.append(callback(args, cluster, jobs, current_job, host_id))
+          break
         elif type(key) == type(VARIABLE_REGEX) and key.match(reg_expr[iter]):
-          new_item.append(callback(args, cluster, jobs, instance_id, reg_expr[iter]))
+          new_item.append(callback(args, cluster, jobs, current_job, host_id, instance_id, reg_expr[iter]))
+          break
 
     for iter in range(len(new_item)):
-      item = item.replace("${"+reg_expr[iter]+"}", str(new_item[iter]))
+      item = item.replace("%{"+reg_expr[iter]+"}", str(new_item[iter]))
     return item
-
 
   @staticmethod
   def parse_raw_files(config_section_dict, args, cluster, jobs):
     '''
-    Parse and calculate the dict value which contains '${}',
+    Parse and calculate the dict value which contains '%{}',
     and read local configuration files as {file_name : file_content_str}.
     Generate configuration files dict as {file_name : file_dict}
     '''
@@ -444,33 +568,33 @@ class ServiceConfig:
     return raw_files, generated_files
 
   @staticmethod
-  def parse_generated_files(config_section_dict, args, cluster, jobs, instance_id):
+  def parse_generated_files(config_section_dict, args, cluster, jobs, current_job, host_id, instance_id):
     '''
-    Parse and calculate key/value which contains '${}',
+    Parse and calculate key/value which contains '%{}',
     update the generated files according to the instance_id
     '''
     generated_files = {}
     for file_name, file_dict in config_section_dict.iteritems():
       if type(file_dict) != str:
         for key, value in file_dict.iteritems():
-          if key.find('$') != -1:
+          if key.find('%') != -1:
             file_dict.pop(key)
-            key = ServiceConfig.parse_item(args, cluster, jobs, instance_id, key)
+            key = ServiceConfig.parse_item(args, cluster, jobs, current_job, host_id, instance_id, key)
             file_dict[key] = value
-          if value.find('$') != -1:
-            value = ServiceConfig.parse_item(args, cluster, jobs, instance_id, value)
+          if value.find('%') != -1:
+            value = ServiceConfig.parse_item(args, cluster, jobs, current_job, host_id, instance_id, value)
             file_dict[key] = value
         generated_files[file_name] = file_dict
 
     return generated_files
 
 
-  def parse_generated_config_files(self, args, instance_id=-1):
+  def parse_generated_config_files(self, args, current_job="", host_id=0, instance_id=-1):
     '''
-    Parse the configuration section for the specified task
+    Parse the configuration section for the specified task.
     '''
     config_section_dict = copy.deepcopy(self.configuration_dict)
     self.configuration.generated_files.update(
       ServiceConfig.parse_generated_files(config_section_dict,
-        args, self.cluster, self.jobs, instance_id))
+        args, self.cluster, self.jobs, current_job, host_id, instance_id))
 
