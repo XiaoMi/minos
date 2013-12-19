@@ -59,7 +59,7 @@ class TankClient:
 
     headers = {
       'Content-Type': content_type,
-      'Content-Length': len(body),
+      'Content-Length': str(len(body)),
     }
 
     self.conn.request('POST', self.upload_uri, body, headers)
