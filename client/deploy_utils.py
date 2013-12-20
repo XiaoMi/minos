@@ -12,6 +12,7 @@ import service_config
 import socket
 import string
 import subprocess
+import sys
 import telnetlib
 import time
 import urllib2
@@ -757,13 +758,28 @@ def get_package_info(args, artifact, cluster):
 def download_package(download_uri, dest_file):
   try:
     data_file = urllib2.urlopen(download_uri, None, 30)
+    data_size = int(dict(data_file.headers).get('content-length'))
   except urllib2.HTTPError, e:
     Log.print_critical("Not found package for uri: %s" % download_uri)
 
   if not os.path.exists(os.path.dirname(dest_file)):
     os.makedirs(os.path.dirname(dest_file))
-  fp = open(dest_file, 'wb')
-  fp.write(data_file.read())
+  fp = open(dest_file, 'ab')
+
+  read_unit_size = 1048576 # read 1M every time
+  read_size = 0
+  progress_bar = '='
+
+  while read_size < data_size:
+    Log.print_progress_bar("package downloading..." + str(
+      int(float(read_size) / data_size * 100)) + "% |" + progress_bar + "=>" + "\r")
+    time.sleep(0.5)
+
+    fp.write(data_file.read(read_unit_size))
+    read_size += read_unit_size
+    progress_bar += '=='
+
+  Log.print_progress_bar("\nDownload complete.\n")
   fp.close()
   data_file.close()
 
