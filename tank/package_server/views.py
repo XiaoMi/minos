@@ -77,7 +77,8 @@ def check_package(request):
 
 def get_latest_package_info(request):
   artifact = request.GET.get('artifact')
-  package = get_latest_package(artifact)
+  package_name = request.GET.get('package_name')
+  package = get_latest_package(artifact, package_name)
   if package:
     return HttpResponse(str(package))
   else:
@@ -94,10 +95,15 @@ def generate_checksum(fp):
 def generate_timestamp():
   return time.strftime('%Y%m%d-%H%M%S')
 
-def get_latest_package(artifact):
-  package_list = Package.objects.filter(
+def get_latest_package(artifact, package_name):
+  if package_name:
+    package_list = Package.objects.filter(
+      artifact=artifact, name=package_name,
+    ).order_by('id').reverse()
+  else:
+    package_list = Package.objects.filter(
       artifact=artifact,
-  ).order_by('id').reverse()
+    ).order_by('id').reverse()
 
   if len(package_list) > 0:
     return package_list[0]

@@ -276,8 +276,8 @@ def run_shell(args):
     os.close(jaas_fd)
     hbase_opts.append("-Djava.security.auth.login.config=%s" % jaas_file)
 
-  package_root = deploy_utils.get_hbase_package_root(
-      args.hbase_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+      args.hbase_config.cluster, "hbase")
   class_path = "%s/:%s/lib/*:%s/*" % (package_root, package_root, package_root)
 
   cmd = ["java", "-cp", class_path] + hbase_opts + [main_class]
@@ -325,7 +325,7 @@ def pack(args):
   get_hbase_service_config(args)
   args.hbase_config.parse_generated_config_files(args)
   version = args.hbase_config.cluster.version
-  deploy_utils.make_package_dir(args, "hbase", version)
+  deploy_utils.make_package_dir(args, "hbase", args.hbase_config.cluster)
   generate_client_config(args, "hbase", version)
 
   if not args.skip_tarball:
@@ -333,8 +333,8 @@ def pack(args):
   Log.print_success("Pack client utilities for hbase success!\n")
 
 def vacate_region_server(args, ip, port):
-  package_root = deploy_utils.get_hbase_package_root(
-      args.hbase_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+      args.hbase_config.cluster, "hbase")
   Log.print_info("Vacate region server: " + ip);
   host = socket.gethostbyaddr(ip)[0]
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,
@@ -343,8 +343,8 @@ def vacate_region_server(args, ip, port):
     Log.print_critical("Unload host %s failed." % host);
 
 def recover_region_server(args, ip, port):
-  package_root = deploy_utils.get_hbase_package_root(
-      args.hbase_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+      args.hbase_config.cluster, "hbase")
   Log.print_info("Recover region server: " + ip);
   host = socket.gethostbyaddr(ip)[0]
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,

@@ -258,8 +258,8 @@ def run_shell(args):
         "-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
         deploy_utils.get_config_dir())
 
-  package_root = deploy_utils.get_hadoop_package_root(
-      args.yarn_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+      args.yarn_config.cluster, "hadoop")
   lib_root = "%s/share/hadoop" % package_root
   class_path = "%s/etc/hadoop" % package_root
   for component in ["common", "hdfs", "mapreduce", "yarn"]:
@@ -289,7 +289,7 @@ def pack(args):
   get_yarn_service_config(args)
   args.yarn_config.parse_generated_config_files(args)
   version = args.yarn_config.cluster.version
-  deploy_utils.make_package_dir(args, "hadoop", version)
+  deploy_utils.make_package_dir(args, "hadoop", args.yarn_config.cluster)
   args.hdfs_config.parse_generated_config_files(args)
   deploy_hdfs.generate_client_config(args, "hadoop", version)
   generate_client_config(args, "hadoop", version)

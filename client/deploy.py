@@ -148,6 +148,7 @@ def parse_command_line():
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help="Run the shell of specified service %s" % SERVICE_DEPLOY_TOOL_MAP.keys(),
       )
+  add_specify_version_options(sub_parser)
   add_service_arguments(sub_parser)
   sub_parser.add_argument("command", nargs=argparse.REMAINDER,
       help="The command to execute")
@@ -157,6 +158,7 @@ def parse_command_line():
       "pack",
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help="Pack client utilities of Hadoop/Hbase/Zookeeper for users")
+  add_specify_version_options(sub_parser)
   sub_parser.add_argument("--package_root", default="./packages",
       help="The local root to store the packed pacakges")
   sub_parser.add_argument("--skip_tarball", action="store_true",

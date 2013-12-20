@@ -97,6 +97,13 @@ class DeployConfig:
     '''
     return '%s/release' % self.get_impala_root()
 
+  def get_package_download_root(self):
+    '''
+    Get the local packages download root directory
+    '''
+    return "%s/packages" % self._get_real_path(
+      self.config_parser.get('default', 'minos_home'))
+
   def get_admin_list(self):
     '''
     Get the administrators list.
@@ -109,9 +116,11 @@ class DeployConfig:
   def _get_real_path(self, path):
     if path.startswith('/'):
       return path
+    elif path.startswith('~'):
+      return os.path.expanduser(path)
     else:
       return os.path.abspath('%s/%s' % (
-            self._get_deploy_root(), path))
+        self._get_deploy_root(), path))
 
 
 def get_deploy_config():

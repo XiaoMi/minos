@@ -337,8 +337,8 @@ def run_shell(args):
     hadoop_opts.append("-D%s%s=%s" % (deploy_utils.HADOOP_PROPERTY_PREFIX,
           key, value))
 
-  package_root = deploy_utils.get_hadoop_package_root(
-      args.hdfs_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+    args.hdfs_config.cluster, "hadoop")
   lib_root = "%s/share/hadoop" % package_root
   class_path = "%s/etc/hadoop" % package_root
   for component in ["common", "hdfs"]:
@@ -388,7 +388,7 @@ def pack(args):
   args.hdfs_config.parse_generated_config_files(args)
 
   version = args.hdfs_config.cluster.version
-  deploy_utils.make_package_dir(args, "hadoop", version)
+  deploy_utils.make_package_dir(args, "hadoop", args.hdfs_config.cluster)
   generate_client_config(args, "hadoop", version)
 
   if not args.skip_tarball:

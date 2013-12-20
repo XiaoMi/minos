@@ -14,6 +14,7 @@ import string
 import subprocess
 import telnetlib
 import time
+import urllib2
 import uuid
 
 from log import Log
@@ -29,6 +30,8 @@ STOPPED_STATUS = ["STOPPED", "BACKOFF", "EXITED", "FATAL"]
 
 HADOOP_PROPERTY_PREFIX = "hadoop.property."
 HADOOP_CONF_PATH = "/etc/hadoop/conf"
+LATEST_PACKAGE_INFO_URI = "get_latest_package_info"
+DOWNLOAD_PACKAGE_URI = "packages"
 
 FAKE_SVN_VERSION = "12345"
 
@@ -697,25 +700,110 @@ def wait_for_job_starting(service, cluster, job, host, instance_id):
     Log.print_critical('Instance %d of %s on %s start failed' % (
       get_real_instance_id(instance_id), job, host))
 
-def get_hadoop_package_root(version):
-  '''
-  Get the hadoop package root directory
-  '''
-  return "%s/hadoop-%s" % (get_deploy_config().get_hadoop_package_dir(), version)
 
-def get_hbase_package_root(version):
-  '''
-  Get the hbase package root directory
-  '''
-  return "%s/hbase-%s/hbase-%s" % (get_deploy_config().get_hbase_package_dir(),
-      version, version)
+def get_package_uri(artifact, package_name, revision, timestamp):
+  tank_config = get_deploy_config().get_tank_config()
 
-def get_zookeeper_package_root(version):
+  return 'http://%s:%s/%s/%s/%s-%s/%s' % (tank_config['server_host'],
+      tank_config['server_port'], DOWNLOAD_PACKAGE_URI, artifact,
+      revision, timestamp, package_name)
+
+def get_query_latest_package_info_uri(artifact, package_name):
+  tank_config = get_deploy_config().get_tank_config()
+
+  return 'http://%s:%s/%s/?artifact=%s&package_name=%s' % (
+    tank_config['server_host'], tank_config['server_port'],
+    LATEST_PACKAGE_INFO_URI, artifact, package_name)
+
+def get_latest_package_info(artifact, package_name):
+  uri = get_query_latest_package_info_uri(artifact, package_name)
+  info_fp = urllib2.urlopen(uri, None, 30)
+  info = info_fp.read()
+
+  if info and info.startswith('{'):
+    info_dict = eval(info)
+    info_fp.close()
+    return info_dict
+  else:
+    info_fp.close()
+    return None
+
+def get_package_info(args, artifact, cluster):
+  if (cluster.package_name and cluster.revision and cluster.timestamp):
+    package_name = cluster.package_name
+    revision = cluster.revision
+    timestamp = cluster.timestamp
+  elif (args.package_name and args.revision and args.timestamp):
+    package_name = args.package_name
+    revision = args.revision
+    timestamp = args.timestamp
+  else:
+    package_info = get_latest_package_info(artifact,
+      artifact + "-" + cluster.version + ".tar.gz")
+    if package_info:
+      package_name = package_info.get('package_name')
+      revision = package_info.get('revision')
+      timestamp = package_info.get('timestamp')
+    else:
+      Log.print_critical("No package found on package server of %s" %
+        artifact + "-" + cluster.version + ".tar.gz")
+
+  return {
+    "package_name": package_name,
+    "revision": revision,
+    "timestamp": timestamp,
+  }
+
+def download_package(download_uri, dest_file):
+  try:
+    data_file = urllib2.urlopen(download_uri, None, 30)
+  except urllib2.HTTPError, e:
+    Log.print_critical("Not found package for uri: %s" % download_uri)
+
+  if not os.path.exists(os.path.dirname(dest_file)):
+    os.makedirs(os.path.dirname(dest_file))
+  fp = open(dest_file, 'wb')
+  fp.write(data_file.read())
+  fp.close()
+  data_file.close()
+
+def make_package_download_dir(args, artifact, cluster):
+  package_info = get_package_info(args, artifact, cluster)
+  package_download_path = "%s/%s/%s-%s/%s" % (
+    get_deploy_config().get_package_download_root(), artifact,
+    package_info['revision'], package_info['timestamp'], package_info['package_name'])
+
+  # check if the tarball is already downloaded, if not, download it
+  if not os.path.exists(package_download_path):
+    package_uri = get_package_uri(artifact, package_info['package_name'],
+      package_info['revision'], package_info['timestamp'])
+    download_package(package_uri, package_download_path)
+
+  # unpack the tarball
+  package_download_dir = package_download_path[
+    0: len(package_download_path) - len('.tar.gz')]
+  if not os.path.exists(package_download_dir):
+    cmd = ['tar', '-zxf', package_download_path, '-C', os.path.dirname(package_download_dir)]
+    subprocess.check_call(cmd)
+
+  return package_download_dir
+
+def get_artifact_package_root(args, cluster, artifact):
   '''
-  Get the zookeeper package root directory
+  Get the artifact package root directory
   '''
-  return "%s/zookeeper-%s" % (
-      get_deploy_config().get_zookeeper_package_dir(), version)
+  if artifact == 'hbase':
+    package_path = "hbase-%s/hbase-%s" % (cluster.version, cluster.version)
+  else:
+    package_path = "%s-%s" % (artifact, cluster.version)
+
+  artifact_package_root = "%s/%s" % (
+    eval("get_deploy_config().get_" + artifact + "_package_dir()"), package_path)
+
+  if os.path.exists(artifact_package_root):
+    return artifact_package_root
+  else:
+    return make_package_download_dir(args, artifact, cluster)
 
 def parse_shell_command(args, command_dict):
   '''
@@ -752,14 +840,17 @@ def write_file(file_name, content):
   file.write(content)
   file.close()
 
-def make_package_dir(args, artifact, version):
+def make_package_dir(args, artifact, cluster):
   '''
   Make the local package directories.
   '''
   cmd = ["mkdir", "-p", "%s/%s/" % (args.package_root, args.cluster)]
   subprocess.check_call(cmd)
 
-  package_path = get_local_package_path(artifact, version)
+  package_path = get_local_package_path(artifact, cluster.version)
+  if not os.path.exists(package_path):
+    package_path = make_package_download_dir(args, artifact, cluster) + ".tar.gz"
+
   cmd = ["tar", "-zxf", package_path, "-C", "%s/%s/" % (
       args.package_root, args.cluster)]
   subprocess.check_call(cmd)

@@ -188,7 +188,7 @@ def run_shell(args):
 def pack(args):
   get_impala_service_config(args)
   version = args.impala_config.cluster.version
-  deploy_utils.make_package_dir(args, "impala-shell", version)
+  deploy_utils.make_package_dir(args, "impala-shell", args.impala_config.cluster)
 
   if not args.skip_tarball:
     deploy_utils.pack_package(args, "impala-shell",

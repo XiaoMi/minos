@@ -244,8 +244,8 @@ def run_shell(args):
       "-Djava.security.krb5.conf=%s/krb5-hadoop.conf" %
       deploy_utils.get_config_dir())
 
-  package_root = deploy_utils.get_zookeeper_package_root(
-      args.zookeeper_config.cluster.version)
+  package_root = deploy_utils.get_artifact_package_root(args,
+      args.zookeeper_config.cluster, "zookeeper")
   class_path = "%s/:%s/lib/*:%s/*" % (package_root, package_root, package_root)
 
   zk_address = "%s:%d" % (
@@ -284,7 +284,7 @@ def pack(args):
   args.zookeeper_config.parse_generated_config_files(args)
 
   version = args.zookeeper_config.cluster.version
-  deploy_utils.make_package_dir(args, "zookeeper", version)
+  deploy_utils.make_package_dir(args, "zookeeper", args.zookeeper_config.cluster)
   generate_client_config(args, "zookeeper", version)
 
   if not args.skip_tarball:
