@@ -774,7 +774,7 @@ def download_package(download_uri, dest_file):
   read_size = 0
   progress_bar = '='
 
-  print_progress_bar("Package downloading...\n")
+  Log.print_info("Package downloading...")
   while read_size < data_size:
     print_progress_bar(str(int(float(read_size) / data_size * 100)) +
       "% |" + progress_bar + "=>" + "\r")
@@ -784,7 +784,8 @@ def download_package(download_uri, dest_file):
     read_size += len(read_data)
     progress_bar += '=='
 
-  print_progress_bar("\nDownload complete.\n")
+  print_progress_bar('\n')
+  Log.print_info("Download complete.")
   fp.close()
   data_file.close()
 
