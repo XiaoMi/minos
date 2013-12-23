@@ -772,19 +772,37 @@ def download_package(download_uri, dest_file):
 
   read_unit_size = 1048576 # read at most 1M every time
   read_size = 0
-  progress_bar = '='
+  bar_length = 70  # print 70 '='
+  speed_max_length = 11 # for example, 1023.99KB/s
 
-  Log.print_info("Package downloading...")
+  Log.print_info("Package downloading...\nLength: %s bytes\nSaving to %s" % (
+    data_size, dest_file))
+  start_time = time.time()
   while read_size < data_size:
-    print_progress_bar(str(int(float(read_size) / data_size * 100)) +
-      "% |" + progress_bar + "=>" + "\r")
-
     read_data = data_file.read(read_unit_size)
     fp.write(read_data)
     read_size += len(read_data)
-    progress_bar += '=='
+    progress_bar = '=' * int(float(read_size) / data_size * bar_length)
 
-  print_progress_bar('\n')
+    download_time = int(time.time() - start_time) + 1
+    download_percent = int(float(read_size) / data_size * 100)
+    blank_bar = " " * (bar_length - len(progress_bar))
+    read_size_str = format(read_size, ',')
+
+    download_speed = float(read_size)/download_time
+    if download_speed >= 1024 * 1024:
+      download_speed = format(download_speed / (1024 * 1024), '.2f') + 'M' # MB/s
+    elif download_speed >= 1024:
+      download_speed = format(download_speed / 1024, '.2f') + 'K'          # KB/s
+    else:
+      download_speed = format(download_speed, '.2f')                       # B/s
+
+    speed_blanks = ' ' * (speed_max_length - len(download_speed) - len('B/s'))
+    print_progress_bar(str(download_percent) + "% [" + progress_bar +
+      ">" + blank_bar + "] " + read_size_str + "  " + speed_blanks +
+      download_speed + "B/s\r")
+
+  print_progress_bar("\n")
   Log.print_info("Download complete.")
   fp.close()
   data_file.close()
