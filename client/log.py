@@ -29,11 +29,6 @@ class Log:
       Log.print_info(message)
 
   @staticmethod
-  def print_progress_bar(message):
-    sys.stdout.write(message)
-    sys.stdout.flush()
-
-  @staticmethod
   def print_info(message):
     Log._print(message)
 

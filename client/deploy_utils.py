@@ -755,6 +755,10 @@ def get_package_info(args, artifact, cluster):
     "timestamp": timestamp,
   }
 
+def print_progress_bar(message):
+  sys.stdout.write(message)
+  sys.stdout.flush()
+
 def download_package(download_uri, dest_file):
   try:
     data_file = urllib2.urlopen(download_uri, None, 30)
@@ -766,20 +770,21 @@ def download_package(download_uri, dest_file):
     os.makedirs(os.path.dirname(dest_file))
   fp = open(dest_file, 'ab')
 
-  read_unit_size = 1048576 # read 1M every time
+  read_unit_size = 1048576 # read at most 1M every time
   read_size = 0
   progress_bar = '='
 
+  print_progress_bar("Package downloading...\n")
   while read_size < data_size:
-    Log.print_progress_bar("package downloading..." + str(
-      int(float(read_size) / data_size * 100)) + "% |" + progress_bar + "=>" + "\r")
-    time.sleep(0.5)
+    print_progress_bar(str(int(float(read_size) / data_size * 100)) +
+      "% |" + progress_bar + "=>" + "\r")
 
-    fp.write(data_file.read(read_unit_size))
-    read_size += read_unit_size
+    read_data = data_file.read(read_unit_size)
+    fp.write(read_data)
+    read_size += len(read_data)
     progress_bar += '=='
 
-  Log.print_progress_bar("\nDownload complete.\n")
+  print_progress_bar("\nDownload complete.\n")
   fp.close()
   data_file.close()
 
