@@ -1,5 +1,6 @@
 import json
 import logging
+import logging.config
 import os
 import sys
 import time
@@ -14,6 +15,7 @@ from tsdb_register import TsdbRegister
 
 local_data_path = 'metrics_dump.data'
 
+logging.config.fileConfig('metrics_logging.conf')
 logger_metrics = logging.getLogger('metrics')
 
 def verify_config():
