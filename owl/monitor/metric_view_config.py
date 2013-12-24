@@ -615,4 +615,5 @@ JOB_METRICS_VIEW_CONFIG = {
 REGION_SERVER_OPERATION_VIEW_CONFIG = ['multi', 'get', 'openScanner', 'next',
                                        'delete', 'checkAndPut', 'execCoprocessor']
 REPLICATION_METRICS_VIEW_CONFIG = ['sizeOfLogQueue', 'ageOfLastShippedOp', 'logEditsReadRate',
-                                   'shippedOpsRate', 'logEditsFilteredRate', 'shippedBatchesRate']
+                                   'shippedOpsRate', 'logEditsFilteredRate', 'shippedBatchesRate',
+                                   'logReadRateInByte']
