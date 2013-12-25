@@ -151,8 +151,8 @@ class HBaseCluster(models.Model):
   # readRequestsCount and writeRequestsCount may exceed max integer
   readRequestsCount = models.FloatField(default = 0, max_length = 20)
   writeRequestsCount = models.FloatField(default = 0, max_length = 20)
-  readRequestsCountPerSec = models.IntegerField(default = 0)
-  writeRequestsCountPerSec = models.IntegerField(default = 0)
+  readRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
+  writeRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
   operationMetrics = models.TextField() # save operation metrics as json format
 
 class RegionServer(models.Model):
@@ -168,8 +168,8 @@ class RegionServer(models.Model):
   storefileSizeMB = models.IntegerField(default = 0)
   readRequestsCount = models.IntegerField(default = 0)
   writeRequestsCount = models.IntegerField(default = 0)
-  readRequestsCountPerSec = models.IntegerField(default = 0)
-  writeRequestsCountPerSec = models.IntegerField(default = 0)
+  readRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
+  writeRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
   replication_last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
   replicationMetrics = models.TextField() # save replication metrics as json format
 
@@ -185,8 +185,8 @@ class Table(models.Model):
   storefileSizeMB = models.IntegerField(default = 0)
   readRequestsCount = models.IntegerField(default = 0)
   writeRequestsCount = models.IntegerField(default = 0)
-  readRequestsCountPerSec = models.IntegerField(default = 0)
-  writeRequestsCountPerSec = models.IntegerField(default = 0)
+  readRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
+  writeRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
 
   availability = models.FloatField(default=-1.0)
   operationMetrics = models.TextField() # save operation metrics as json format
@@ -210,8 +210,8 @@ class Region(models.Model):
   storefileSizeMB = models.IntegerField(default = 0)
   readRequestsCount = models.IntegerField(default = 0)
   writeRequestsCount = models.IntegerField(default = 0)
-  readRequestsCountPerSec = models.IntegerField(default = 0)
-  writeRequestsCountPerSec = models.IntegerField(default = 0)
+  readRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
+  writeRequestsCountPerSec = models.FloatField(default = 0, max_length = 20)
 
   currentCompactedKVs = models.IntegerField(default = 0)
   requestsCount = models.IntegerField(default = 0)
@@ -256,12 +256,12 @@ class Region(models.Model):
   def analyze_region_record(self, region_value, update_time):
     time_interval = (update_time - self.last_attempt_time).seconds
     self.readRequestsCountPerSec = \
-        (region_value['readRequestsCount'] - self.readRequestsCount)\
+        (float)(region_value['readRequestsCount'] - self.readRequestsCount)\
         / time_interval
     if self.readRequestsCountPerSec < 0:
       self.readRequestsCountPerSec = 0
     self.writeRequestsCountPerSec = \
-        (region_value['writeRequestsCount'] - self.writeRequestsCount)\
+        (float)(region_value['writeRequestsCount'] - self.writeRequestsCount)\
         / time_interval
     if self.writeRequestsCountPerSec < 0:
       self.writeRequestsCountPerSec = 0

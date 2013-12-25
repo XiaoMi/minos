@@ -25,7 +25,7 @@
                         connectorColor: '#000000',
                         formatter: function() {
                           if (this.y < 1024*1024) {
-                            return '<b>'+ this.point.name +'</b>: '+ Highcharts.numberFormat(this.percentage, 1) +' % : ' + this.y;
+                            return '<b>'+ this.point.name +'</b>: '+ Highcharts.numberFormat(this.percentage, 1) +' % : ' + this.y.toFixed(2);
                           } else {
                             K = 1024;
                             exponent = [2,3,4,5];
