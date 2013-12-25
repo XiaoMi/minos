@@ -103,8 +103,11 @@ def tsdb_job_metrics_view_config(job):
   service, cluster, job = str(job).split('/')
   return metric_view_config.JOB_METRICS_VIEW_CONFIG[service][job]
 
-def make_metric_query(endpoint, group, key):
-  return "&m=sum:%s{host=%s,group=%s}&o=" % (key, endpoint, group)
+def make_metric_query(endpoint, group, key, unit=""):
+  if unit:
+    return "&m=sum:%s{host=%s,group=%s}&o=&yformat=%%25.0s%%25c %s" % (key, endpoint, group, unit)
+  else:
+    return "&m=sum:%s{host=%s,group=%s}&o=" % (key, endpoint, group)
 
 def make_quota_query(cluster_name, user_id, key):
   return "&m=sum:%s{cluster=%s,user_id=%s}&o=" % (key, cluster_name, user_id)
@@ -118,7 +121,7 @@ def make_metrics_query_for_task(endpoint, task):
       group, key, unit = graph_config[0]
       graph = {
         'title' : '%s:%s' % (group, key),
-        'query' : make_metric_query(endpoint, group, key),
+        'query' : make_metric_query(endpoint, group, key, unit),
       }
       metrics_view.append(graph)
     metrics.append((view_tag, metrics_view))
@@ -131,17 +134,17 @@ def make_metrics_query_for_job(endpoints, job, tasks):
     metrics_view = []
     for graph_config in view_config:
       group, key, unit = graph_config[0]
-      metrics_view.append(make_metric_query_graph_for_endpoints(endpoints, group, key))
+      metrics_view.append(make_metric_query_graph_for_endpoints(endpoints, group, key, unit))
     metrics.append((view_tag, metrics_view))
   return metrics
 
-def make_metric_query_graph_for_endpoints(endpoints, group, key):
+def make_metric_query_graph_for_endpoints(endpoints, group, key, unit=""):
   graph = {
     'title' : '%s:%s' % (group, key),
     'query' : [],
   }
   for endpoint in endpoints:
-    graph['query'].append(make_metric_query(endpoint, group, key))
+    graph['query'].append(make_metric_query(endpoint, group, key, unit))
   return graph
 
 def get_peer_id_endpoint_map_and_cluster(region_servers):
