@@ -612,8 +612,12 @@ JOB_METRICS_VIEW_CONFIG = {
   }
 }
 
+DEFAULT_OPS_UNIT = "op(s)"
+DEFAULT_LATENCY_UNIT = "us(s)"
+
 REGION_SERVER_OPERATION_VIEW_CONFIG = ['multi', 'get', 'openScanner', 'next',
                                        'delete', 'checkAndPut', 'execCoprocessor']
-REPLICATION_METRICS_VIEW_CONFIG = ['sizeOfLogQueue', 'ageOfLastShippedOp', 'logEditsReadRate',
-                                   'shippedOpsRate', 'logEditsFilteredRate', 'shippedBatchesRate',
-                                   'logReadRateInByte']
+REPLICATION_METRICS_VIEW_CONFIG = [('sizeOfLogQueue', 'count(s)'), ('ageOfLastShippedOp', 'ms(s)'),
+				   ('logEditsReadRate', 'op(s)'), ('shippedOpsRate', 'op(s)',),
+				   ('logEditsFilteredRate', 'op(s)'), ('shippedBatchesRate', 'op(s)'),
+                                   ('logReadRateInByte', 'byte(s)')]

@@ -25,7 +25,7 @@ def form_perf_counter_group_name(task, bean_name):
 def form_percentile_counter_name(endpoint, group, operationName):
   percentiles = []
   for suffix in OPERATION_HISTOGRAM_PERCENTILES:
-    percentiles.append(make_metric_query(endpoint, group, '%s_%s' % (operationName, suffix)))
+    percentiles.append(make_latency_metric_query(endpoint, group, '%s_%s' % (operationName, suffix)))
   return ''.join(percentiles)
 
 # parse bean name
@@ -165,14 +165,22 @@ def make_metrics_query_for_replication(peer_id_endpoint_map, peer_id_cluster_map
   for peer_id in peer_id_endpoint_map.keys():
     endpoints = peer_id_endpoint_map[peer_id]
     peer_graphs = []
-    for key in metric_view_config.REPLICATION_METRICS_VIEW_CONFIG:
+    for key_and_unit in metric_view_config.REPLICATION_METRICS_VIEW_CONFIG:
+      key = key_and_unit[0]
+      unit = key_and_unit[1]
       replication_key = key + '-' + peer_id
-      peer_graphs.append(make_metric_query_graph_for_endpoints(endpoints, "Replication", replication_key))
+      peer_graphs.append(make_metric_query_graph_for_endpoints(endpoints, "Replication", replication_key, unit))
     cluster_name = "unknown-cluster"
     if peer_id in peer_id_cluster_map.keys():
       cluster_name = peer_id_cluster_map[peer_id]
     metrics.append((peer_id, cluster_name, peer_graphs))
   return metrics
+
+def make_ops_metric_query(endpoint, group, name):
+  return make_metric_query(endpoint, group, name, metric_view_config.DEFAULT_OPS_UNIT)
+
+def make_latency_metric_query(endpoint, group, name):
+  return make_metric_query(endpoint, group, name, metric_view_config.DEFAULT_LATENCY_UNIT)
 
 # metrics is an array of counters, where the counter is formatted as :
 # [operationName, CounterOfNumOps, CounterOfAvgTime]
@@ -190,13 +198,13 @@ def make_operation_metrics(endpoint, record, group):
       operationNumOpsName = operationName + '_NumOps'
       numOpsCounter = {}
       numOpsCounter['title'] = operationNumOpsName
-      numOpsCounter['query'] = make_metric_query(endpoint, group, operationNumOpsName)
+      numOpsCounter['query'] = make_ops_metric_query(endpoint, group, operationNumOpsName)
       operationCounter.append(numOpsCounter)
 
       operationAvgTimeName = operationName + '_AvgTime'
       avgTimeCounter = {}
       avgTimeCounter['title'] = operationAvgTimeName
-      avgTimeCounter['query'] = make_metric_query(endpoint, group, operationAvgTimeName)
+      avgTimeCounter['query'] = make_latency_metric_query(endpoint, group, operationAvgTimeName)
       operationCounter.append(avgTimeCounter)
 
       metrics.append(operationCounter)
@@ -232,8 +240,8 @@ def make_operation_metrics_for_tables_in_cluster(cluster):
         print type(endpoint)
         print type(group)
         print type(numOpsCounterName)
-        metrics[operationName][0]['query'].append(make_metric_query(endpoint, group, numOpsCounterName))
-        metrics[operationName][1]['query'].append(make_metric_query(endpoint, group, avgTimeCounterName))
+        metrics[operationName][0]['query'].append(make_ops_metric_query(endpoint, group, numOpsCounterName))
+        metrics[operationName][1]['query'].append(make_latency_metric_query(endpoint, group, avgTimeCounterName))
 
   return metrics
 
@@ -251,7 +259,7 @@ def generate_operation_metric_for_regionserver(regionserver):
     # then, append counter for NumOps
     num_ops_counter = {}
     num_ops_counter['title'] = operationName + '_histogram_num_ops'
-    num_ops_counter['query'] = make_metric_query(endpoint, group, num_ops_counter['title'])
+    num_ops_counter['query'] = make_ops_metric_query(endpoint, group, num_ops_counter['title'])
     counter.append(num_ops_counter)
 
     # lastly, append counters for percentile
