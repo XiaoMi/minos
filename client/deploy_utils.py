@@ -729,12 +729,19 @@ def get_latest_package_info(artifact, package_name):
     info_fp.close()
     return None
 
+def check_cluster_version(cluster, specified_package_name):
+  if specified_package_name.find(cluster.version) == -1:
+    Log.print_critical("The version: %s is inconsistent with " \
+      "the package_name: %s" % (cluster.version, specified_package_name))
+
 def get_package_info(args, artifact, cluster):
   if (cluster.package_name and cluster.revision and cluster.timestamp):
+    check_cluster_version(cluster, cluster.package_name)
     package_name = cluster.package_name
     revision = cluster.revision
     timestamp = cluster.timestamp
   elif (args.package_name and args.revision and args.timestamp):
+    check_cluster_version(cluster, args.package_name)
     package_name = args.package_name
     revision = args.revision
     timestamp = args.timestamp
