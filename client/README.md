@@ -104,3 +104,4 @@ The client tool also supports a very handy command named `shell`.  You can use t
     ./deploy.py shell hdfs dptst-example dfs -rm -R /test
 
 You can run `./deploy.py --help` to see the detailed help messages.
+
