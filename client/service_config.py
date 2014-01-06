@@ -149,7 +149,7 @@ def get_short_user_name_full():
       if (line.strip().startswith(centos_line_prefix) or
           line.strip().startswith(macos_line_prefix)):
         return True, line.split(':')[1].split('@')[0].strip()
-  except subprocess.CalledProcessError, e:
+  except:
     return False, getpass.getuser()
 
 def get_specific_dir(host, service, cluster_name, job_name, instance_id, attribute):
