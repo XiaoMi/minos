@@ -579,6 +579,7 @@ def start_job(args, artifact, service, service_config, host, job_name,
 
   if not args.update_config:
     config_files = dict()
+    start_script = ""
 
   if (service_config.cluster.package_name and service_config.cluster.revision
       and service_config.cluster.timestamp):
