@@ -478,7 +478,10 @@ class DeploymentRPCInterface:
         if not self._check_dir_empty(data_dir):
           return 'The data dir %s is not empty, please do cleanup first' % data_dir
       else:
-        os.makedirs(data_dir)
+        try:
+          os.makedirs(data_dir)
+        except OSError, e:
+          return "Error: %s" % str(e)
       symbol_data_dir = '%s/%s' % (run_dir, os.path.basename(data_dirs[int(i)]))
       if not os.path.exists(symbol_data_dir):
         os.symlink(data_dir, symbol_data_dir)
@@ -510,6 +513,8 @@ class DeploymentRPCInterface:
           instance_id, revision, timestamp, package_name)
     except urllib2.URLError, e:
       return "%s. There may be an error about your package information." % str(e)
+    except subprocess.CalledProcessError, e:
+      return "Error: %s" % str(e)
     cleanup_token = config_dict.get('cleanup_token', str())
     run_config = ConfigParser.SafeConfigParser()
     run_config.add_section('run_info')
@@ -577,6 +582,8 @@ class DeploymentRPCInterface:
             instance_id, revision, timestamp, package_name)
       except urllib2.URLError, e:
         return "%s. There may be an error about your package information." % str(e)
+      except subprocess.CalledProcessError, e:
+        return "Error: %s" % str(e)
       run_cfg = '%s/%s' % (self.get_run_dir(service, cluster, job, instance_id),
           JOB_RUN_CONFIG)
       self._update_run_cfg(run_cfg, 'run_info', 'package_dir', package_dir)
