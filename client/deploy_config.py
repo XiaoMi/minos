@@ -97,6 +97,19 @@ class DeployConfig:
     '''
     return '%s/release' % self.get_impala_root()
 
+  def get_kafka_root(self):
+    '''
+    Get the local kafka root directory
+    '''
+    return self._get_real_path(self.config_parser.get(
+          'default', 'kafka_root'))
+
+  def get_kafka_package_dir(self):
+    '''
+    Get the local kafka tarball directory
+    '''
+    return self.get_kafka_root()
+
   def get_package_download_root(self):
     '''
     Get the local packages download root directory

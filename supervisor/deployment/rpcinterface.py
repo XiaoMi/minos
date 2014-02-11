@@ -374,7 +374,8 @@ class DeploymentRPCInterface:
       return '%s--%s--%s%d' % (service, cluster, job, instance_id)
 
   def _cleanup_dir(self, path):
-    cmd = 'rm -rf %s/*' % path
+    # Remove the whole directory in case there are some hidden files.
+    cmd = 'rm -rf %s/' % path
     subprocess.check_call(cmd, shell=True)
 
   def _check_dir_empty(self, path):

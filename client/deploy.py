@@ -12,6 +12,7 @@ import deploy_utils
 import deploy_zookeeper
 import deploy_yarn
 import deploy_impala
+import deploy_kafka
 
 from log import Log
 
@@ -21,6 +22,7 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "hbase": deploy_hbase,
   "zookeeper": deploy_zookeeper,
   "impala": deploy_impala,
+  "kafka": deploy_kafka,
 }
 
 LOG_LEVEL_RANGE_MAP = [

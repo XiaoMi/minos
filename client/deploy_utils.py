@@ -117,6 +117,10 @@ def get_local_package_path(artifact, version):
     package_path = get_local_package_path_general(
         get_deploy_config().get_imapala_package_dir(),
         artifact, version)
+  elif artifact == "kafka":
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_kafka_package_dir(),
+        artifact, version)
   else:
     Log.print_critical("Unknow artifact: %s" % artifact)
   return package_path
@@ -238,6 +242,21 @@ def generate_site_xml(args, template_dict):
 """ % (key, template_dict[key])
   return template.substitute({"config_value": config_value})
 
+def generate_properties_file(args, template_dict):
+  '''
+  Generate the *.properties file according to the given properties dict.
+
+  @param  args          the argument object parsed by argparse
+  @param  template_dict the properties dict
+  @return string        the generated file content
+  '''
+  template_path = "%s/properties.tmpl" % get_template_dir()
+
+  template = Template(open(template_path).read())
+  return template.substitute(
+      {"config_value":
+          "\n".join(["%s=%s" % (k, v) for k, v in template_dict.iteritems()])})
+
 def create_run_script(template_path, template_dict):
   '''
   Generate the run script of given script template and variables dict.
@@ -277,6 +296,8 @@ def get_root_dir(service):
     return get_deploy_config().get_zookeeper_root()
   if service == "impala":
     return get_deploy_config().get_impala_root()
+  if service == "kafka":
+    return get_deploy_config().get_kafka_root()
   Log.print_critical("Unknow service: %s" % service)
 
 def get_supervisor_client(host, service, cluster, job, instance_id=-1):
