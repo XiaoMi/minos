@@ -1,5 +1,10 @@
 Minos Change Log
 
+2014/02/13
+1. Support deploying kafka
+2. Improve minos set up process and documents
+3. Fix some minor bugs
+
 2014/01/02
 1. Some minor improvements and bug fixes.
 
