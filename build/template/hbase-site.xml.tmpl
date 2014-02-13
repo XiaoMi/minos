@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>hbase.rootdir</name>
+    <value>file:///$hbase_rootdir/hbase-\${user.name}/hbase</value>
+  </property>
+  <property>
+    <name>hbase.zookeeper.dns.interface</name>
+    <value>$iface</value>
+  </property>
+  <property>
+    <name>hbase.regionserver.dns.interface</name>
+    <value>$iface</value>
+  </property>
+  <property>
+    <name>hbase.master.dns.interface</name>
+    <value>$iface</value>
+  </property>
+</configuration>

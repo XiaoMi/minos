@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-#
-
 import httplib
 import mimetypes
 import os

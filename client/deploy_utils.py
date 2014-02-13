@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import cStringIO
 import deploy_config
@@ -952,10 +950,11 @@ def confirm_rolling_update(host_id, instance_id, wait_time):
           % wait_time)
       time.sleep(wait_time)
 
-    input = raw_input("Ready to update instance %d on host %d? (y/n) " % (
-      get_real_instance_id(instance_id), host_id))
-    if check_input(input):
-      return True
+    while True:
+      input = raw_input("Ready to update instance %d on host %d? (y/n) " % (
+        get_real_instance_id(instance_id), host_id))
+      if check_input(input):
+        return True
   return False
 
 def get_zk_address(cluster):

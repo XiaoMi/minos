@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source "$(dirname $0)"/../build/minos_env.sh || exit 1
+cd $CLIENT_ROOT
+
+PYTHONPATH=$CLIENT_ROOT exec $ENV_PYTHON $CLIENT_DEPLOY_ENTRY $@

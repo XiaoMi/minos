@@ -1,5 +1,3 @@
 #!/bin/sh
 
-./stop_supervisor.sh
-
-PYTHONPATH=. ./supervisord.py $@
+PYTHONPATH=. $ENV_PYTHON supervisord.py $@

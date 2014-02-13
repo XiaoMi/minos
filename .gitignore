@@ -1,4 +1,8 @@
 *.svn*
 *.pyc
 *~
+*.out
+*.log
 client/packages/
+build/env/
+build/download

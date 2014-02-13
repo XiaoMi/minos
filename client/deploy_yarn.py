@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import deploy_hdfs
 import deploy_utils
