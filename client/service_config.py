@@ -415,7 +415,7 @@ class ServiceConfig:
       '''
       for args_type in ARGUMENTS_TYPE_LIST:
         base_arguments_list = base_arguments_dict[args_type]
-        if type(base_arguments_list) != list:
+        if type(base_arguments_list) == str:
           base_arguments_list = base_arguments_list.split()
 
         child_arguments_list = []
@@ -573,7 +573,7 @@ class ServiceConfig:
     '''
     generated_files = {}
     for file_name, file_dict in config_section_dict.iteritems():
-      if type(file_dict) != str:
+      if type(file_dict) == dict:
         for key, value in file_dict.iteritems():
           if key.find('%') != -1:
             file_dict.pop(key)
