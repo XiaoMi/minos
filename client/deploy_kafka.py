@@ -11,21 +11,26 @@ import deploy_utils
 
 from log import Log
 
-ALL_JOBS = ["kafka"]
+ALL_JOBS = ["kafka", "kafkascribe"]
 
 def _get_kafka_service_config(args):
   args.kafka_config = deploy_utils.get_service_config(args)
 
 def generate_configs(args, job_name, host_id, instance_id):
-  hosts = args.kafka_config.jobs[job_name].hosts
-  task_id = deploy_utils.get_task_id(hosts, host_id, instance_id)
-
   kafka_cfg_dict = args.kafka_config.configuration.generated_files["kafka.cfg"]
-  kafka_cfg_dict["broker.id"] = task_id
+  hosts = args.kafka_config.jobs[job_name].hosts
+  kafka_cfg_dict["broker.id"] = deploy_utils.get_task_id(hosts, host_id, instance_id)
   kafka_cfg = deploy_utils.generate_properties_file(args, kafka_cfg_dict)
+
+  kafka_scribe_cfg_dict = args.kafka_config.configuration.generated_files["kafka-scribe.cfg"]
+  kafka_job = args.kafka_config.jobs["kafka"]
+  kafka_scribe_cfg_dict["metadata.broker.list"] = ",".join(
+      service_config.get_job_host_port_list(kafka_job))
+  kafka_scribe_cfg = deploy_utils.generate_properties_file(args, kafka_scribe_cfg_dict)
 
   config_files = {
     "kafka.cfg": kafka_cfg,
+    "kafka-scribe.cfg": kafka_scribe_cfg,
   }
   config_files.update(args.kafka_config.configuration.raw_files)
 
@@ -39,10 +44,7 @@ def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
 
   artifact_and_version = "kafka-" + args.kafka_config.cluster.version
 
-  component_dir = "$package_dir"
-  # must include both [dir]/ and [dir]/* as [dir]/* only import all jars under
-  # this dir but we also need access the webapps under this dir.
-  jar_dirs = "%s/:%s/libs/*:%s/*" % (component_dir, component_dir, component_dir)
+  jar_dirs = "$package_dir/*"
   log_level = deploy_utils.get_service_log_level(args, args.kafka_config)
 
   params = job.get_arguments(args, args.kafka_config.cluster, args.kafka_config.jobs,

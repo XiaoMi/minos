@@ -106,7 +106,7 @@ class DeployConfig:
     '''
     Get the local kafka tarball directory
     '''
-    return self.get_kafka_root()
+    return '%s/release' % self.get_kafka_root()
 
   def get_package_download_root(self):
     '''
