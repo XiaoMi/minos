@@ -573,7 +573,7 @@ class ServiceConfig:
     '''
     generated_files = {}
     for file_name, file_dict in config_section_dict.iteritems():
-      if type(file_dict) == dict:
+      if isinstance(file_dict, dict):
         for key, value in file_dict.iteritems():
           if key.find('%') != -1:
             file_dict.pop(key)
