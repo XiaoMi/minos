@@ -91,6 +91,16 @@ def get_zk_hosts_with_port(args, cluster, jobs, current_job, host_id):
   host_port_list = get_job_host_port_list(zk_job)
   return ",".join(host_port_list)
 
+def get_slots_ports_list(args, cluster, jobs, current_job, host_id):
+  slot_port = jobs["supervisor"].base_port + 10
+  slot_number = int(args.storm_config.configuration.generated_files['storm.yaml']['slot_number'])
+
+  slots_ports_list = []
+  for port_index in range(slot_number):
+    slots_ports_list.append(str(slot_port + port_index))
+  return ','.join(slots_ports_list)
+
+
 def get_journalnode_hosts_with_port(args, cluster, jobs, current_job, host_id):
   hdfs_config = get_service_config(args, "hdfs", cluster)
   jour_job = hdfs_config.jobs["journalnode"]
@@ -239,6 +249,7 @@ SCHEMA_MAP = {
   SERVICE_JOB_TASK_ATTRIBUTE_REGEX : get_service_job_task_attribute,
   "zk.hosts" : get_zk_hosts,
   "zk.hosts_with_port" : get_zk_hosts_with_port,
+  "slots_ports_list" : get_slots_ports_list,
   "journalnode_task_list" : get_journalnode_hosts_with_port,
   "server_list" : get_zk_server_list,
   "config_dir" : get_config_dir,
@@ -566,6 +577,16 @@ class ServiceConfig:
     return raw_files, generated_files
 
   @staticmethod
+  def parse_list_type_value(list_type_value, args, cluster, jobs, current_job, host_id, instance_id):
+    for item_index in range(len(list_type_value)):
+      if list_type_value[item_index].find('%') != -1:
+        value_item = ServiceConfig.parse_item(args, cluster, jobs, current_job,
+          host_id, instance_id, list_type_value[item_index])
+        list_type_value[item_index] = value_item
+
+    return list_type_value
+
+  @staticmethod
   def parse_generated_files(config_section_dict, args, cluster, jobs, current_job, host_id, instance_id):
     '''
     Parse and calculate key/value which contains '%{}',
@@ -579,9 +600,11 @@ class ServiceConfig:
             file_dict.pop(key)
             key = ServiceConfig.parse_item(args, cluster, jobs, current_job, host_id, instance_id, key)
             file_dict[key] = value
-          if value.find('%') != -1:
-            value = ServiceConfig.parse_item(args, cluster, jobs, current_job, host_id, instance_id, value)
-            file_dict[key] = value
+          if isinstance(value, list):
+            file_dict[key] = ServiceConfig.parse_list_type_value(value, args, cluster, jobs,
+              current_job, host_id, instance_id)
+          elif value.find('%') != -1:
+            file_dict[key] = ServiceConfig.parse_item(args, cluster, jobs, current_job, host_id, instance_id, value)
         generated_files[file_name] = file_dict
 
     return generated_files

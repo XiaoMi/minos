@@ -119,6 +119,10 @@ def get_local_package_path(artifact, version):
     package_path = get_local_package_path_general(
         get_deploy_config().get_kafka_package_dir(),
         artifact, version)
+  elif artifact == "storm":
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_storm_package_dir(),
+        artifact, version)
   else:
     Log.print_critical("Unknow artifact: %s" % artifact)
   return package_path
@@ -255,6 +259,25 @@ def generate_properties_file(args, template_dict):
       {"config_value":
           "\n".join(["%s=%s" % (k, v) for k, v in template_dict.iteritems()])})
 
+def generate_yaml_file(yaml_dict):
+  '''
+  Generate the yaml format config file according to the given yaml dict.
+
+  @param  yaml_dict     the yaml dict
+  @return string        the generated file content
+  '''
+  yaml_format_string = ""
+  for key, value in yaml_dict.iteritems():
+    yaml_format_string += key
+    if value.find(',') != -1:
+      yaml_format_string += ":\n"
+      for item in value.split(','):
+        yaml_format_string += "  - %s\n" % item
+    else:
+      yaml_format_string += ": %s\n" % value
+
+  return yaml_format_string
+
 def create_run_script(template_path, template_dict):
   '''
   Generate the run script of given script template and variables dict.
@@ -296,6 +319,8 @@ def get_root_dir(service):
     return get_deploy_config().get_impala_root()
   if service == "kafka":
     return get_deploy_config().get_kafka_root()
+  if service == "storm":
+    return get_deploy_config().get_storm_root()
   Log.print_critical("Unknow service: %s" % service)
 
 def get_supervisor_client(host, service, cluster, job, instance_id=-1):

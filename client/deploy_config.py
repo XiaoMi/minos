@@ -108,6 +108,19 @@ class DeployConfig:
     '''
     return '%s/release' % self.get_kafka_root()
 
+  def get_storm_root(self):
+    '''
+    Get the local storm root directory
+    '''
+    return self._get_real_path(self.config_parser.get(
+          'default', 'storm_root'))
+
+  def get_storm_package_dir(self):
+    '''
+    Get the local storm tarball directory
+    '''
+    return '%s/release' % self.get_storm_root()
+
   def get_package_download_root(self):
     '''
     Get the local packages download root directory
