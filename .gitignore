@@ -1,5 +1,6 @@
 *.svn*
 *.pyc
+.idea
 *~
 *.out
 *.log
