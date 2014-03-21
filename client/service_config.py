@@ -42,13 +42,24 @@ def get_port_addition_result(args, cluster, jobs, current_job, host_id, instance
   add_num = int(reg_expr.group('num'))
   return get_base_port(jobs[job_name].base_port, instance_id) + add_num
 
-def get_task_port_addition_result(args, cluster, jobs, current_job, host_id, instance_id, val):
+def get_job_task_port_addition_result(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = JOB_TASK_PORT_EXPR_REGEX.match(val)
   job_name = reg_expr.group('job')
   task_id = reg_expr.group('task')
   add_num = int(reg_expr.group('num'))
   host_id, instance_id = parse_task_number(task_id, jobs[job_name].hosts)
   return get_base_port(jobs[job_name].base_port, instance_id) + add_num
+
+def get_service_job_task_port_addition_result(args, cluster, jobs, current_job, host_id, instance_id, val):
+  reg_expr = SERVICE_JOB_TASK_PORT_EXPR_REGEX.match(val)
+  service = reg_expr.group('service')
+  job_name = reg_expr.group('job')
+  task_id = reg_expr.group('task')
+  add_num = int(reg_expr.group('num'))
+
+  service_config = get_service_config(args, service, cluster)
+  host_id, instance_id = parse_task_number(task_id, service_config.jobs[job_name].hosts)
+  return get_base_port(service_config.jobs[job_name].base_port, instance_id)
 
 def get_service_cluster_name(service, cluster):
   if service == "zookeeper":
@@ -57,6 +68,12 @@ def get_service_cluster_name(service, cluster):
     hdfs_cluster = cluster.hdfs_cluster
     if hdfs_cluster != cluster.name:
       return hdfs_cluster
+    else:
+      return cluster.name
+  elif service == "hbase":
+    hbase_cluster = cluster.hbase_cluster
+    if hbase_cluster != cluster.name:
+      return hbase_cluster
     else:
       return cluster.name
 
@@ -99,7 +116,6 @@ def get_slots_ports_list(args, cluster, jobs, current_job, host_id):
   for port_index in range(slot_number):
     slots_ports_list.append(str(slot_port + port_index))
   return ','.join(slots_ports_list)
-
 
 def get_journalnode_hosts_with_port(args, cluster, jobs, current_job, host_id):
   hdfs_config = get_service_config(args, "hdfs", cluster)
@@ -239,14 +255,16 @@ JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribut
 JOB_TASK_PORT_EXPR_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.base_port[+-](?P<num>\d+)')
 SERVICE_CLUSTER_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.cluster\.(?P<attribute>\w+)$')
 SERVICE_JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribute>\w+)$')
+SERVICE_JOB_TASK_PORT_EXPR_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.(?P<task>\d+)\.base_port[+-](?P<num>\d+)')
 
 SCHEMA_MAP = {
   JOB_PORT_EXPR_REGEX : get_port_addition_result,
   SECTION_ATTRIBUTE_REGEX : get_section_attribute,
   JOB_TASK_ATTRIBUTE_REGEX : get_job_task_attribute,
-  JOB_TASK_PORT_EXPR_REGEX : get_task_port_addition_result,
+  JOB_TASK_PORT_EXPR_REGEX : get_job_task_port_addition_result,
   SERVICE_CLUSTER_ATTRIBUTE_REGEX : get_service_cluster_attribute,
   SERVICE_JOB_TASK_ATTRIBUTE_REGEX : get_service_job_task_attribute,
+  SERVICE_JOB_TASK_PORT_EXPR_REGEX : get_service_job_task_port_addition_result,
   "zk.hosts" : get_zk_hosts,
   "zk.hosts_with_port" : get_zk_hosts_with_port,
   "slots_ports_list" : get_slots_ports_list,
@@ -278,6 +296,7 @@ CLUSTER_SCHEMA = {
   "revision": (str, ""),
   "timestamp": (str, ""),
   "hdfs_cluster": (str, ""),
+  "hbase_cluster": (str, ""),
   "log_level": (str, "info"),
 }
 
