@@ -221,6 +221,17 @@ def get_job_task_attribute(args, cluster, jobs, current_job, host_id, instance_i
   elif attribute == 'base_port':
     return get_base_port(jobs[job_name].base_port, instance_id)
 
+def get_job_host_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
+  reg_expr = JOB_HOST_ATTRIBUTE_REGEX.match(val)
+  job_name = reg_expr.group('job')
+  attribute = reg_expr.group('attribute')
+  if not getattr(jobs[job_name].hosts[host_id], attribute, None):
+    Log.print_critical("The attribute %s of %s--%s is not configured." \
+      " Please check your configuration." % (
+      attribute, job_name, jobs[job_name].hosts[host_id].ip))
+
+  return getattr(jobs[job_name].hosts[host_id], attribute)
+
 def get_section_attribute(args, cluster, jobs, current_job, host_id, instance_id, val):
   reg_expr = SECTION_ATTRIBUTE_REGEX.match(val)
   section = reg_expr.group('section')
@@ -246,13 +257,13 @@ def get_section_attribute(args, cluster, jobs, current_job, host_id, instance_id
 
 CLUSTER_NAME_REGEX = re.compile(r'((?P<zk>[a-z0-9]+)-)?([a-z0-9]+)')
 HOST_RULE_REGEX = re.compile(r'host\.(?P<id>\d+)')
-HOST_REGEX = re.compile(r'(?P<host>[\d\.]+)(/(?P<process>\d+))?$')
 VARIABLE_REGEX = re.compile('%\{(.+?)\}')
 
 SECTION_ATTRIBUTE_REGEX = re.compile('(?P<section>(?!zk\.)\w+)\.(?P<attribute>\w+)$')
 JOB_PORT_EXPR_REGEX = re.compile('(?P<job>\w+)\.base_port[+-](?P<num>\d+)')
 JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribute>\w+)$')
 JOB_TASK_PORT_EXPR_REGEX = re.compile('(?P<job>\w+)\.(?P<task>\d+)\.base_port[+-](?P<num>\d+)')
+JOB_HOST_ATTRIBUTE_REGEX = re.compile('(?P<job>\w+)\.host\.(?P<attribute>\w+)$')
 SERVICE_CLUSTER_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.cluster\.(?P<attribute>\w+)$')
 SERVICE_JOB_TASK_ATTRIBUTE_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.(?P<task>\d+)\.(?P<attribute>\w+)$')
 SERVICE_JOB_TASK_PORT_EXPR_REGEX = re.compile('(?P<service>\w+)\.(?P<job>\w+)\.(?P<task>\d+)\.base_port[+-](?P<num>\d+)')
@@ -262,6 +273,7 @@ SCHEMA_MAP = {
   SECTION_ATTRIBUTE_REGEX : get_section_attribute,
   JOB_TASK_ATTRIBUTE_REGEX : get_job_task_attribute,
   JOB_TASK_PORT_EXPR_REGEX : get_job_task_port_addition_result,
+  JOB_HOST_ATTRIBUTE_REGEX : get_job_host_attribute,
   SERVICE_CLUSTER_ATTRIBUTE_REGEX : get_service_cluster_attribute,
   SERVICE_JOB_TASK_ATTRIBUTE_REGEX : get_service_job_task_attribute,
   SERVICE_JOB_TASK_PORT_EXPR_REGEX : get_service_job_task_port_addition_result,
@@ -279,10 +291,10 @@ SCHEMA_MAP = {
 }
 
 COMMON_JOB_SCHEMA = {
-    # "param_name": (type, default_value)
-    # type must be in {bool, int, float, str}
-    # if default_value is None, it means it's NOT an optional parameter.
-    "base_port": (int, None),
+  # "param_name": (type, default_value)
+  # type must be in {bool, int, float, str}
+  # if default_value is None, it means it's NOT an optional parameter.
+  "base_port": (int, None),
 }
 
 CLUSTER_SCHEMA = {
@@ -366,28 +378,18 @@ class ServiceConfig:
         if not reg_expr:
           continue
         host_id = int(reg_expr.group("id"))
-        reg_expr = HOST_REGEX.match(value)
-        if not reg_expr:
-          Log.print_critical("Host/IP address expected on rule: %s = %s" %
-                            (name, value))
-        ip = reg_expr.group("host")
+        self.hosts[host_id] = ServiceConfig.Jobs.Hosts(value)
+
+        ip = self.hosts[host_id].ip
         try:
           self.hostnames[host_id] = socket.gethostbyaddr(ip)[0]
         except:
           self.hostnames[host_id] = ip
 
-        process = reg_expr.group("process")
-        if process:
-          if process < 1:
-            Log.print_critical("The process number must be greater than or equal to 1!")
-          else:
-            if process > 1 and job_name not in MULTIPLE_INSTANCES_JOBS:
-              Log.print_critical("The job %s doesn't support for multiple instances" \
-                " on the same host. Please check your config." % job_name)
-            else:
-              self.hosts[host_id] = ServiceConfig.Jobs.Hosts(ip, process)
-        else:
-          self.hosts[host_id] = ServiceConfig.Jobs.Hosts(ip)
+        instance_num = self.hosts[host_id].instance_num
+        if instance_num > 1 and job_name not in MULTIPLE_INSTANCES_JOBS:
+          Log.print_critical("The job %s doesn't support for multiple instances" \
+            " on the same host. Please check your config." % job_name)
 
     def _generate_arguments_list(self, job_dict, job_name, arguments_dict):
       '''
@@ -485,9 +487,33 @@ class ServiceConfig:
       '''
       The class represents all the hosts of a job
       '''
-      def __init__(self, ip, instance_num=1):
-        self.ip = ip
-        self.instance_num = int(instance_num)
+      def __init__(self, attribute_str):
+        # parse the host attributes
+        self._parse_host_attributes(attribute_str)
+
+      def _parse_host_attributes(self, attribute_str):
+        attribute_list = attribute_str.split('/')
+        attribute_dict = {}
+
+        # parse the attribute_str
+        attribute_dict['ip'] = attribute_list[0]
+
+        for attribute_item in attribute_list[1:]:
+          if attribute_item.find('=') == -1:
+            Log.print_critical("The host attributes definition are wrong." \
+              " Please check your configuration file.")
+          attribute_name, attribute_val = attribute_item.split('=')
+          attribute_dict[attribute_name] = attribute_val
+
+        # check the essential attributes 'instance'
+        instance_num = int(attribute_dict.get('instance_num', 1))
+        if instance_num < 1:
+          Log.print_critical("The instance number must be greater than or equal to 1!")
+        attribute_dict['instance_num'] = instance_num # store 'int' type
+
+        # set the host attributes
+        for attribute_name, attribute_val in attribute_dict.iteritems():
+          setattr(self, attribute_name, attribute_val)
 
   class Configuration:
     '''
