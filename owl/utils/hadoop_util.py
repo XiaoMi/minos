@@ -3,15 +3,14 @@ import logging
 import subprocess
 import os
 
-deploy_root = os.path.realpath(os.path.dirname(os.path.realpath(__file__)) + "../../../")
-client_root = os.path.join(deploy_root, 'client')
+CLIENT_DEPLOY_ENTRY = os.getenv("CLIENT_DEPLOY_ENTRY")
+ENV_PYTHON = os.getenv("ENV_PYTHON")
 
 logger = logging.getLogger('quota')
 def get_quota_summary(cluster_name):
   res = []
   try:
-    # call with python2.7 explicitly because on centos python link to python2.6
-    cmd = ["python2.7", "%s/deploy.py" % client_root, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/user/*']
+    cmd = [ENV_PYTHON, CLIENT_DEPLOY_ENTRY, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/user/*']
     content = subprocess.check_output(cmd)
     for line in content.strip().split('\n'):
       dir_info = {}

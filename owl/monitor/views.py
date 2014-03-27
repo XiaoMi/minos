@@ -255,6 +255,23 @@ def show_cluster_replication(request, id):
   }
   return respond(request, 'monitor/hbase_replication.html', params)
 
+def is_test_table(table):
+  if 'tst-' in table.cluster.name:
+    return True
+  if '-test' in table.cluster.name:
+      return True
+  return False
+
+#url: /table
+def show_all_tables(request):
+  tables = dbutil.get_all_tables()
+  tables = [table for table in tables if not is_system_table(table)]
+  tables = [table for table in tables if not is_test_table(table)]
+  params = {
+    'tables': tables,
+  }
+  return respond(request, 'monitor/hbase_tables.html', params)
+
 #url: /table/$table_id/
 def show_table(request, id):
   table = dbutil.get_table(id)

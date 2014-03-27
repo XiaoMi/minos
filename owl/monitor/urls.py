@@ -26,7 +26,7 @@ urlpatterns = patterns(
   url(r'^job/(?P<id>[^/]+)/$', views.show_job),
   url(r'^task/(?P<id>[^/]+)/$', views.show_task),
 
-
+  url(r'^table/$', views.show_all_tables),
   url(r'^table/(?P<id>\d+)/$', views.show_table),
   url(r'^table/operation/(?P<id>\d+)/$', views.show_table_operation),
   url(r'^cluster/operation/(?P<id>\d+)/$', views.show_cluster_operation),

@@ -9,7 +9,7 @@ kinit hdfs_admin@XIAOMI.HADOOP || exit 2
 
 user=$1
 cluster=$2
-HDFS="./deploy.py shell hdfs $cluster dfs"
+HDFS="./deploy shell hdfs $cluster dfs"
 
 set -x
 

@@ -374,7 +374,8 @@ class DeploymentRPCInterface:
       return '%s--%s--%s%d' % (service, cluster, job, instance_id)
 
   def _cleanup_dir(self, path):
-    cmd = 'rm -rf %s/*' % path
+    # Remove the whole directory in case there are some hidden files.
+    cmd = 'rm -rf %s/' % path
     subprocess.check_call(cmd, shell=True)
 
   def _check_dir_empty(self, path):
@@ -478,7 +479,10 @@ class DeploymentRPCInterface:
         if not self._check_dir_empty(data_dir):
           return 'The data dir %s is not empty, please do cleanup first' % data_dir
       else:
-        os.makedirs(data_dir)
+        try:
+          os.makedirs(data_dir)
+        except OSError, e:
+          return "Error: %s" % str(e)
       symbol_data_dir = '%s/%s' % (run_dir, os.path.basename(data_dirs[int(i)]))
       if not os.path.exists(symbol_data_dir):
         os.symlink(data_dir, symbol_data_dir)
@@ -505,8 +509,13 @@ class DeploymentRPCInterface:
       return 'No package found on package server of %s' % artifact
 
     # Write the job's run.cfg
-    package_dir = self._make_package_dir(artifact, service, cluster, job,
-        instance_id, revision, timestamp, package_name)
+    try:
+      package_dir = self._make_package_dir(artifact, service, cluster, job,
+          instance_id, revision, timestamp, package_name)
+    except urllib2.URLError, e:
+      return "%s. There may be an error about your package information." % str(e)
+    except subprocess.CalledProcessError, e:
+      return "Error: %s" % str(e)
     cleanup_token = config_dict.get('cleanup_token', str())
     run_config = ConfigParser.SafeConfigParser()
     run_config.add_section('run_info')
@@ -565,12 +574,17 @@ class DeploymentRPCInterface:
       package_path = '%s/%s/%s-%s/%s' % (
           self.global_config.get('package_root'),
           artifact, revision, timestamp, package_name)
-      if not os.path.exists(package_path):
-        self._downlowd_package(
-            self._get_package_uri(artifact, revision, timestamp, package_name),
-            package_path)
-      package_dir = self._make_package_dir(artifact, service, cluster, job,
-          instance_id, revision, timestamp, package_name)
+      try:
+        if not os.path.exists(package_path):
+          self._downlowd_package(
+              self._get_package_uri(artifact, revision, timestamp, package_name),
+              package_path)
+        package_dir = self._make_package_dir(artifact, service, cluster, job,
+            instance_id, revision, timestamp, package_name)
+      except urllib2.URLError, e:
+        return "%s. There may be an error about your package information." % str(e)
+      except subprocess.CalledProcessError, e:
+        return "Error: %s" % str(e)
       run_cfg = '%s/%s' % (self.get_run_dir(service, cluster, job, instance_id),
           JOB_RUN_CONFIG)
       self._update_run_cfg(run_cfg, 'run_info', 'package_dir', package_dir)

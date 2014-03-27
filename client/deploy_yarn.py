@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import deploy_hdfs
 import deploy_utils
@@ -295,7 +293,7 @@ def pack(args):
   generate_client_config(args, "hadoop", version)
 
   if not args.skip_tarball:
-    deploy_utils.pack_package(args, "hadoop", args.hdfs_config.cluster.version)
+    deploy_utils.pack_package(args, "hadoop", args.yarn_config.cluster.version)
   Log.print_success("Pack client utilities for hadoop success!\n")
 
 def rolling_update(args):

@@ -10,7 +10,6 @@
   <logger name="org.apache.hadoop.hdfs.server.namenode.FSNamesystem.audit">
     <level value="info" />
     <appender-ref ref="ASYNC_AUDIT_DRFA" />
-    <appender-ref ref="ASYNC_AUDIT_SCRIBE" />
   </logger>
 
   <!--EventCounter appender: sends counts of logging messages to hadoop metrics-->

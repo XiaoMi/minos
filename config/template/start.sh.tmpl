@@ -13,6 +13,11 @@ pid=`echo $$`
 package_dir="$run_dir/package"
 log_dir="$run_dir/log"
 pid_file="$run_dir/${job_name}.pid"
+
+if [[ ! -d $run_dir/stdout ]]; then 
+   mkdir $run_dir/stdout
+fi
+
 output_file="$run_dir/stdout/${job_name}_${start_time}.out"
 
 jar_dirs="%jar_dirs"
@@ -49,6 +54,6 @@ fi
 
 %service_env
 if [ -f ./pre.sh ]; then
-  /bin/bash ./pre.sh
+  source ./pre.sh $job_name $run_dir
 fi
 exec ${java} -cp $class_path $options $params $@ 1>$output_file 2>&1

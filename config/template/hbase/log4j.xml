@@ -10,7 +10,6 @@
   <category name="SecurityLogger">
     <level value="debug" />
     <appender-ref ref="ASYNC_AUDIT_DRFA" />
-    <appender-ref ref="ASYNC_AUDIT_SCRIBE" />
   </category>
 
   <!--EventCounter appender: sends counts of logging messages to hadoop metrics-->

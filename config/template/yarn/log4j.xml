@@ -10,13 +10,11 @@
   <logger name="org.apache.hadoop.mapred.AuditLogger">
     <level value="info" />
     <appender-ref ref="ASYNC_AUDIT_DRFA" />
-    <appender-ref ref="ASYNC_AUDIT_SCRIBE" />
   </logger>
 
   <logger name="org.apache.hadoop.yarn.server.resourcemanager.RMAuditLogger">
     <level value="info" />
     <appender-ref ref="ASYNC_AUDIT_DRFA" />
-    <appender-ref ref="ASYNC_AUDIT_SCRIBE" />
   </logger>
 
   <logger name="org.apache.hadoop.yarn.server.resourcemanager.RMAppManager$ApplicationSummary">

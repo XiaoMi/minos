@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import deploy_utils
 import service_config
 import subprocess

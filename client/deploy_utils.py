@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import cStringIO
 import deploy_config
@@ -116,6 +114,18 @@ def get_local_package_path(artifact, version):
   elif artifact == "impala-shell" or artifact == "impala":
     package_path = get_local_package_path_general(
         get_deploy_config().get_imapala_package_dir(),
+        artifact, version)
+  elif artifact == "kafka":
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_kafka_package_dir(),
+        artifact, version)
+  elif artifact == "storm":
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_storm_package_dir(),
+        artifact, version)
+  elif artifact == "galaxy-fds":
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_galaxy_package_dir(),
         artifact, version)
   else:
     Log.print_critical("Unknow artifact: %s" % artifact)
@@ -238,6 +248,40 @@ def generate_site_xml(args, template_dict):
 """ % (key, template_dict[key])
   return template.substitute({"config_value": config_value})
 
+def generate_properties_file(args, template_dict):
+  '''
+  Generate the *.properties file according to the given properties dict.
+
+  @param  args          the argument object parsed by argparse
+  @param  template_dict the properties dict
+  @return string        the generated file content
+  '''
+  template_path = "%s/properties.tmpl" % get_template_dir()
+
+  template = Template(open(template_path).read())
+  return template.substitute(
+      {"config_value":
+          "\n".join(["%s=%s" % (k, v) for k, v in template_dict.iteritems()])})
+
+def generate_yaml_file(yaml_dict):
+  '''
+  Generate the yaml format config file according to the given yaml dict.
+
+  @param  yaml_dict     the yaml dict
+  @return string        the generated file content
+  '''
+  yaml_format_string = ""
+  for key, value in yaml_dict.iteritems():
+    yaml_format_string += key
+    if value.find(',') != -1:
+      yaml_format_string += ":\n"
+      for item in value.split(','):
+        yaml_format_string += "  - %s\n" % item
+    else:
+      yaml_format_string += ": %s\n" % value
+
+  return yaml_format_string
+
 def create_run_script(template_path, template_dict):
   '''
   Generate the run script of given script template and variables dict.
@@ -277,6 +321,12 @@ def get_root_dir(service):
     return get_deploy_config().get_zookeeper_root()
   if service == "impala":
     return get_deploy_config().get_impala_root()
+  if service == "kafka":
+    return get_deploy_config().get_kafka_root()
+  if service == "storm":
+    return get_deploy_config().get_storm_root()
+  if service == "galaxy":
+    return get_deploy_config().get_galaxy_root()
   Log.print_critical("Unknow service: %s" % service)
 
 def get_supervisor_client(host, service, cluster, job, instance_id=-1):
@@ -370,6 +420,10 @@ def is_security_enabled(args):
              hbase_site_dict["hbase.security.authorization"] == "true")
   elif args.service == "impala":
     core_site_dict = args.impala_config.configuration.generated_files["core-site.xml"]
+    return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
+             core_site_dict["hadoop.security.authorization"] == "true")
+  elif args.service == "galaxy":
+    core_site_dict = args.galaxy_config.configuration.generated_files["core-site.xml"]
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
   else:
@@ -579,6 +633,7 @@ def start_job(args, artifact, service, service_config, host, job_name,
 
   if not args.update_config:
     config_files = dict()
+    start_script = ""
 
   if (service_config.cluster.package_name and service_config.cluster.revision
       and service_config.cluster.timestamp):
@@ -729,12 +784,19 @@ def get_latest_package_info(artifact, package_name):
     info_fp.close()
     return None
 
+def check_cluster_version(cluster, specified_package_name):
+  if specified_package_name.find(cluster.version) == -1:
+    Log.print_critical("The version: %s is inconsistent with " \
+      "the package_name: %s" % (cluster.version, specified_package_name))
+
 def get_package_info(args, artifact, cluster):
   if (cluster.package_name and cluster.revision and cluster.timestamp):
+    check_cluster_version(cluster, cluster.package_name)
     package_name = cluster.package_name
     revision = cluster.revision
     timestamp = cluster.timestamp
   elif (args.package_name and args.revision and args.timestamp):
+    check_cluster_version(cluster, args.package_name)
     package_name = args.package_name
     revision = args.revision
     timestamp = args.timestamp
@@ -923,10 +985,11 @@ def confirm_rolling_update(host_id, instance_id, wait_time):
           % wait_time)
       time.sleep(wait_time)
 
-    input = raw_input("Ready to update instance %d on host %d? (y/n) " % (
-      get_real_instance_id(instance_id), host_id))
-    if check_input(input):
-      return True
+    while True:
+      input = raw_input("Ready to update instance %d on host %d? (y/n) " % (
+        get_real_instance_id(instance_id), host_id))
+      if check_input(input):
+        return True
   return False
 
 def get_zk_address(cluster):

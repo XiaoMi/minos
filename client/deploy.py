@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import argparse
 import os
 import platform
@@ -12,6 +10,9 @@ import deploy_utils
 import deploy_zookeeper
 import deploy_yarn
 import deploy_impala
+import deploy_kafka
+import deploy_storm
+import deploy_galaxy
 
 from log import Log
 
@@ -21,6 +22,9 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "hbase": deploy_hbase,
   "zookeeper": deploy_zookeeper,
   "impala": deploy_impala,
+  "kafka": deploy_kafka,
+  "storm": deploy_storm,
+  "galaxy": deploy_galaxy,
 }
 
 LOG_LEVEL_RANGE_MAP = [

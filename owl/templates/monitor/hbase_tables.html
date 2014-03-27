@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load extended_filter %}
+{% load humanize %}
+
+{% block content %}
+    <div class="row">
+        <div class="span12">
+            <h3>Total {{ tables|length}} User Table</h3>
+            <table class="table table-striped table-bordered">
+                <thead>
+                <tr>
+                    <th>table</th>
+                    <th>cluster</th>
+                    <th>data amount(MB)</th>
+                    <th>read qps</th>
+                    <th>write qps</th>
+                    <th>row num</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for table in tables %}
+                    <tr>
+                        <td><a href="/monitor/table/{{ table.id }}">{{ table.name }}</a></td>
+                        <td><a href="/monitor/cluster/{{ table.cluster.id }}/table">{{ table.cluster.name }}</a></td>
+                        <td>{{ table.memStoreSizeMB|add:table.storefileSizeMB | intcomma}}</td>
+                        <td>{{ table.readRequestsCountPerSec | floatformat}}</td>
+                        <td>{{ table.writeRequestsCountPerSec| floatformat }}</td>
+                        <td></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

@@ -1,5 +1,13 @@
 Minos Change Log
 
+2014/02/13
+1. Support deploying Kafka
+2. Improve minos setup process and documents
+3. Fix some minor bugs
+
+2014/01/02
+1. Some minor improvements and bug fixes.
+
 2013/12/18
 1. Support deploying multiple instances on single host
 2. Support deploying and monitoring supervisor via puppet
