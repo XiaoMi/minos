@@ -2,7 +2,7 @@ import deploy_utils
 
 from log import Log
 
-ALL_JOBS = ["fdsserver"]
+ALL_JOBS = ["fdsserver", "fdsproxy"]
 
 def _get_galaxy_service_config(args):
   args.galaxy_config = deploy_utils.get_service_config(args)
