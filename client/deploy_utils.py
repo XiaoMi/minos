@@ -123,7 +123,7 @@ def get_local_package_path(artifact, version):
     package_path = get_local_package_path_general(
         get_deploy_config().get_storm_package_dir(),
         artifact, version)
-  elif artifact == "galaxy-fds":
+  elif artifact == "galaxy":
     package_path = get_local_package_path_general(
         get_deploy_config().get_galaxy_package_dir(),
         artifact, version)
@@ -325,7 +325,7 @@ def get_root_dir(service):
     return get_deploy_config().get_kafka_root()
   if service == "storm":
     return get_deploy_config().get_storm_root()
-  if service == "galaxy":
+  if service == "fds":
     return get_deploy_config().get_galaxy_root()
   Log.print_critical("Unknow service: %s" % service)
 
@@ -422,8 +422,8 @@ def is_security_enabled(args):
     core_site_dict = args.impala_config.configuration.generated_files["core-site.xml"]
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
-  elif args.service == "galaxy":
-    core_site_dict = args.galaxy_config.configuration.generated_files["core-site.xml"]
+  elif args.service == "fds":
+    core_site_dict = args.fds_config.configuration.generated_files["core-site.xml"]
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
   else:

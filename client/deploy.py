@@ -12,7 +12,7 @@ import deploy_yarn
 import deploy_impala
 import deploy_kafka
 import deploy_storm
-import deploy_galaxy
+import deploy_fds
 
 from log import Log
 
@@ -24,7 +24,7 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "impala": deploy_impala,
   "kafka": deploy_kafka,
   "storm": deploy_storm,
-  "galaxy": deploy_galaxy,
+  "fds": deploy_fds,
 }
 
 LOG_LEVEL_RANGE_MAP = [
