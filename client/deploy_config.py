@@ -123,16 +123,16 @@ class DeployConfig:
 
   def get_galaxy_root(self):
     '''
-    Get the local galaxy fds server root directory
+    Get the local galaxy root directory
     '''
     return self._get_real_path(self.config_parser.get(
           'default', 'galaxy_root'))
 
   def get_galaxy_package_dir(self):
     '''
-    Get the local galaxy fds server tarball directory
+    Get the local galaxy dist tarball directory
     '''
-    return '%s/galaxy-fds-dist/target' % self.get_galaxy_root()
+    return '%s/galaxy-dist/target' % self.get_galaxy_root()
 
   def get_package_download_root(self):
     '''
