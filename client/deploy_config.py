@@ -132,7 +132,7 @@ class DeployConfig:
     '''
     Get the local galaxy fds server tarball directory
     '''
-    return '%s/galaxy-fds-server/target' % self.get_galaxy_root()
+    return '%s/galaxy-fds-dist/target' % self.get_galaxy_root()
 
   def get_package_download_root(self):
     '''
