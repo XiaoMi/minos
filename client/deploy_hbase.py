@@ -334,7 +334,10 @@ def vacate_region_server(args, ip, port):
   package_root = deploy_utils.get_artifact_package_root(args,
       args.hbase_config.cluster, "hbase")
   Log.print_info("Vacate region server: " + ip);
-  host = socket.gethostbyaddr(ip)[0]
+  try:
+    host = socket.gethostbyaddr(ip)[0]
+  except:
+    host = ip
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,
     "unload", "%s:%d" % (host, port)]
   if run_shell(args) != 0:
@@ -344,7 +347,10 @@ def recover_region_server(args, ip, port):
   package_root = deploy_utils.get_artifact_package_root(args,
       args.hbase_config.cluster, "hbase")
   Log.print_info("Recover region server: " + ip);
-  host = socket.gethostbyaddr(ip)[0]
+  try:
+    host = socket.gethostbyaddr(ip)[0]
+  except:
+    host = ip
   args.command = ["ruby", "%s/bin/region_mover.rb" % package_root,
     "load", "%s:%d" % (host, port)]
   if run_shell(args) != 0:

@@ -121,6 +121,19 @@ class DeployConfig:
     '''
     return '%s/release' % self.get_storm_root()
 
+  def get_galaxy_root(self):
+    '''
+    Get the local galaxy fds server root directory
+    '''
+    return self._get_real_path(self.config_parser.get(
+          'default', 'galaxy_root'))
+
+  def get_galaxy_package_dir(self):
+    '''
+    Get the local galaxy fds server tarball directory
+    '''
+    return '%s/galaxy-fds-dist/target' % self.get_galaxy_root()
+
   def get_package_download_root(self):
     '''
     Get the local packages download root directory
