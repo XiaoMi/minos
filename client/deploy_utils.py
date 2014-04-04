@@ -127,6 +127,10 @@ def get_local_package_path(artifact, version):
     package_path = get_local_package_path_general(
         get_deploy_config().get_galaxy_package_dir(),
         artifact, version)
+  elif artifact == 'timestamp':
+    package_path = get_local_package_path_general(
+        get_deploy_config().get_timestamp_package_dir(),
+        artifact, version)
   else:
     Log.print_critical("Unknow artifact: %s" % artifact)
   return package_path
@@ -327,6 +331,8 @@ def get_root_dir(service):
     return get_deploy_config().get_storm_root()
   if service == "fds":
     return get_deploy_config().get_galaxy_root()
+  if service == "timestamp":
+    return get_deploy_config().get_timestamp_root()
   Log.print_critical("Unknow service: %s" % service)
 
 def get_supervisor_client(host, service, cluster, job, instance_id=-1):
