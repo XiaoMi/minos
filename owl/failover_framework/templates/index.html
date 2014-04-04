@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<h2>Failover</h2>
+<div class="row">
+  <div class="span12">{{ failover_task_chart }}</div>
+</div>
+
+
+<h2>Status 
+  {% if is_running %}
+  <img src="{{ STATIC_URL}}/ok.png" width="24" alt="ok" title="Running" />
+  {% else %}
+  <img src="{{ STATIC_URL}}/alert.png" width="24" alt="alert" title="Not Running" />
+  {% endif %}
+</h2>
+
+<div class="row">
+  <p class="lead">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Go to <a href="http://{{host_port}}" target="_blank">http://{{host_port}}</a> for more details.</p>
+</div> 
+
+
+<h2>Statics</h2>
+<table class="table table-striped table-bordered">
+  <thead>
+    <tr>
+      <th>Time Period</th>
+      <th>Total Tasks</th>
+      <th>Fail Tasks</th>
+      <th>Total Actions</th>
+      <th>Fail Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>One Hour</td>
+      <td><a href="/failover/task/?latest={{hour_task_number}}">{{hour_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{hour_fail_task_number}}&fail=True">{{hour_fail_task_number}}</a></td>
+      <td><a href="/failover/action/?latest={{hour_action_number}}">{{hour_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{hour_fail_action_number}}&fail=True">{{hour_fail_action_number}}</a></td>
+    </tr>
+    <tr>
+      <td>One Day</td>
+      <td><a href="/failover/task/?latest={{day_task_number}}">{{day_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{day_fail_task_number}}&fail=True">{{day_fail_task_number}}</a></td>
+      <td><a href="/failover/action/?latest={{day_action_number}}">{{day_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{day_fail_action_number}}&fail=True">{{day_fail_action_number}}</a></td>
+    </tr>
+    <tr>
+      <td>One Week</td>
+      <td><a href="/failover/task/?latest={{week_task_number}}">{{week_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{week_fail_task_number}}&fail=True">{{week_fail_task_number}}</a></td>
+      <td><a href="/failover/action/?latest={{week_action_number}}">{{week_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{week_fail_action_number}}&fail=True">{{week_fail_action_number}}</a></td>
+    </tr>
+    <tr>
+      <td>One Month</td>
+      <td><a href="/failover/task/?latest={{month_task_number}}">{{month_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{month_fail_task_number}}&fail=True">{{month_fail_task_number}}</a></td>
+      <td><a href="/failover/action/?latest={{month_action_number}}">{{month_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{month_fail_action_number}}&fail=True">{{month_fail_action_number}}</a></td>
+    </tr>
+    <tr>
+      <td>One Year</td>
+      <td><a href="/failover/task/?latest={{year_task_number}}">{{year_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{year_fail_task_number}}&fail=True">{{year_fail_task_number}}</a></td>
+      <td><a href="/failover/action/?latest={{year_action_number}}">{{year_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{year_fail_action_number}}&fail=True">{{year_fail_action_number}}</a></td>
+    </tr>
+    <tr>
+      <td>Total</td>
+      <td><a href="/failover/task/">{{total_task_number}}</a></td>
+      <td><a href="/failover/task/?latest={{total_fail_task_number}}&fail=True">{{total_fail_task_number}}</a></td>
+      <td><a href="/failover/action/">{{total_action_number}}</a></td>
+      <td><a href="/failover/action/?latest={{total_fail_action_number}}&fail=True">{{total_fail_action_number}}</a></td>
+    </tr>
+
+  </tbody>
+</table>
+
+<a href="/failover/task/">All Tasks</a>&nbsp;&nbsp;&nbsp;
+<a href="/failover/action/">All Actions</a>
+<div align="right"><a href="/failover/">Refresh</a></div>
+
+{% endblock %}
