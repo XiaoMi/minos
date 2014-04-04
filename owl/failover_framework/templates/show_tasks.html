@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="float:left">Tasks</h2>
+<form action="/failover/task/" method="get" class="form-search" style="float:right">
+  <input type="text" name="start_time" class="input-medium search-query" placeholder="2013-09-12_11:10:30 ...">
+  <button type="submit" class="btn">Search Task</button>
+</form>
+
+<table class="table table-striped table-bordered">
+  <thead>
+    <tr>
+      <th>Start Time</th>
+      <th>Action Number</th>
+      <th>Cluster Healthy</th>
+      <th>Data Consistent</th>
+      <th>Action Success</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for task in tasks %}
+    <tr>
+      <td>{{task.start_time}}</td>
+      <td>{{task.action_number}}</td>
+      <td>
+        {% if task.cluster_healthy == 1 %}
+        <img src="{{ STATIC_URL }}/ok.png" width="24" alt="ok"/>
+        {% else %}
+        <img src="{{ STATIC_URL }}/alert.png" width="24" alt="alert"/>
+        {% endif %}
+      </td>
+      <td>
+        {% if task.data_consistent == 1 %}
+        <img src="{{ STATIC_URL }}/ok.png" width="24" alt="ok"/>
+        {% else %}
+        <img src="{{ STATIC_URL }}/alert.png" width="24" alt="alert"/>
+        {% endif %}
+      </td>
+      <td>
+        {% for action in task.action_set.all %}
+        {% if action.success == 1 %}
+        <img src="{{ STATIC_URL }}/ok.png" width="24" alt="ok"/>
+        {% else %}
+        <img src="{{ STATIC_URL }}/alert.png" width="24" alt="alert"/>
+        {% endif %}
+        <a href="/failover/action/?start_time={{action.start_time}}" title="Goto the action">{{ action.name }}</a>
+        <br/>
+        {% endfor %}
+      </td>
+      {% endfor %}
+  </tbody>
+</table>
+
+<div class="pagination">
+  <span class="step-links">
+    {% if tasks.has_previous %}
+    <a href="?page={{ tasks.previous_page_number }}">Previous</a>
+    {% endif %}
+
+    <span class="current">
+      Page {{ tasks.number }} of {{ tasks.paginator.num_pages }}
+    </span>
+
+    {% if tasks.has_next %}
+    <a href="?page={{ tasks.next_page_number }}">Next</a>
+    {% endif %}
+  </span>
+</div>
+
+<div align="right"><a href="/failover/">Back</a></div>
+
+
+{% endblock %}

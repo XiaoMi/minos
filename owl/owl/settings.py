@@ -132,6 +132,7 @@ INSTALLED_APPS = (
   'monitor',
   'quota',
   'zktree',
+  'failover_framework',
   )
 
 # A sample logging configuration. The only tangible logging
@@ -202,9 +203,19 @@ LOGGING = {
       'handlers': ['console', 'file'],
       'level': 'INFO',
       'propagate': True,
+    },
+    'failover_framework': {
+      'handlers': ['console'],
+      'level': 'INFO',
+      'propagate': True,
     }
   }
 }
 
 # site config
 LOGIN_REDIRECT_URL = '/monitor/'
+
+# for failover framework app
+FAILOVER_FRAMEWORK_HOST = "127.0.0.1"
+FAILOVER_FRAMEWORK_PORT = 9981
+FAILOVER_FRAMEWORK_PERIOD = 600

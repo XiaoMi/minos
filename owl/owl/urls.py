@@ -24,4 +24,5 @@ urlpatterns = patterns(
   url(r'^hbase/', include('hbase.urls')),
   url(r'^business/', include('business.urls')),
   url(r'^zktree/', include('zktree.urls')),
+  url(r'^failover/', include('failover_framework.urls')),
 )
