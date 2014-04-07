@@ -30,6 +30,8 @@ def get_quota_summary(cluster_name):
           dir_info['name'] = 'hbase'
         res.append(dir_info)
   except Exception, e:
+    if repr(e).find("No such file") == -1:
+      return ""
     raise e
   return res
 
