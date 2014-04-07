@@ -8,6 +8,8 @@ from optparse import make_option
 from os import path
 from utils.quota_util import QuotaUpdater
 
+from quota_reportor import QUOTA_REPORT_ADMINS
+
 logger = logging.getLogger('quota')
 
 class Command(BaseCommand):
@@ -34,16 +36,16 @@ class Command(BaseCommand):
     while True:
       try:
         quota_updater.update_all_cluster()
-        time.sleep(int(self.options['period']))
       except Exception as e:
         # send alert email when program error
         logger.warning('Quota updater error: %r', e)
         admin_email = ''
         try:
-          admin_email = settings.ADMINS[0][1]
+          admin_email = QUOTA_REPORT_ADMINS
         except:
           pass
         self.mailer.send_email(subject = 'Quota updater error',
                                content = repr(e),
                                to_email = admin_email,
                               )
+      time.sleep(int(self.options['period']))
