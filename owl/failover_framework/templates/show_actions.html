@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 style="float:left">Actions</h2>
+<form action="/failover/action/" method="get" class="form-search" style="float:right">
+  <input type="text" name="start_time" class="input-medium search-query" placeholder="2013-09-12_11:10:30 ...">
+  <button type="submit" class="btn">Search Action</button>
+</form>
+
+<table class="table table-striped table-bordered">
+  <thead>
+    <tr>
+      <th>Start Time</th>
+      <th>Action Name</th>
+      <th>Action Success</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for action in actions %}
+    <tr>
+      <td><a href="/failover/task/?start_time={{action.start_time}}" title="Goto the task">{{action.start_time}}</a></td>
+      <td>{{action.name}}</td>
+      <td>
+        {% if action.success == 1 %}
+        <img src="{{ STATIC_URL }}/ok.png" width="24" alt="ok"/>
+        {% else %}
+        <img src="{{ STATIC_URL }}/alert.png" width="24" alt="alert"/>
+        {% endif %}
+      </td>
+      {% endfor %}
+  </tbody>
+</table>
+
+<div class="pagination">
+  <span class="step-links">
+    {% if actions.has_previous %}
+    <a href="?page={{ actions.previous_page_number }}">Previous</a>
+    {% endif %}
+
+    <span class="current">
+      Page {{ actions.number }} of {{ actions.paginator.num_pages }}
+    </span>
+
+    {% if actions.has_next %}
+    <a href="?page={{ actions.next_page_number }}">Next</a>
+    {% endif %}
+  </span>
+</div>
+
+<div align="right"><a href="/failover/">Back</a></div>
+{% endblock %}

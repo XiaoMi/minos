@@ -256,10 +256,16 @@ def show_cluster_replication(request, id):
   return respond(request, 'monitor/hbase_replication.html', params)
 
 def is_test_table(table):
-  if 'tst-' in table.cluster.name:
+  if 'tst' in table.cluster.name:
     return True
-  if '-test' in table.cluster.name:
+  if 'test' in table.cluster.name:
       return True
+
+  if 'longhaul' in table.name:
+   return True
+  if 'test' in table.name:
+     return True
+
   return False
 
 #url: /table
