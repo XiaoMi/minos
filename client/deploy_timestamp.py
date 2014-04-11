@@ -36,7 +36,7 @@ def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
 
   artifact_and_version = "timestamp-" + args.timestamp_config.cluster.version
 
-  jar_dirs = "$package_dir/*"
+  jar_dirs = "$package_dir/lib/*"
   log_level = deploy_utils.get_service_log_level(args, args.timestamp_config)
 
   params = job.get_arguments(args, args.timestamp_config.cluster, args.timestamp_config.jobs,
