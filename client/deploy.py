@@ -13,7 +13,7 @@ import deploy_impala
 import deploy_kafka
 import deploy_storm
 import deploy_fds
-import deploy_timestamp
+import deploy_chronos
 
 from log import Log
 
@@ -26,7 +26,7 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "kafka": deploy_kafka,
   "storm": deploy_storm,
   "fds": deploy_fds,
-  "timestamp": deploy_timestamp
+  "chronos": deploy_chronos
 }
 
 LOG_LEVEL_RANGE_MAP = [

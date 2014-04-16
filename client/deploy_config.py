@@ -134,18 +134,18 @@ class DeployConfig:
     '''
     return '%s/galaxy-dist/target' % self.get_galaxy_root()
 
-  def get_timestamp_root(self):
+  def get_chronos_root(self):
     '''
-    Get the local timestamp root directory
+    Get the local chronos root directory
     '''
     return self._get_real_path(self.config_parser.get(
-          'default', 'timestamp_root'))
+          'default', 'chronos_root'))
 
-  def get_timestamp_package_dir(self):
+  def get_chronos_package_dir(self):
     '''
-    Get the local timestamp tarball directory
+    Get the local chronos tarball directory
     '''
-    return '%s/target' % self.get_timestamp_root()
+    return '%s/target' % self.get_chronos_root()
 
   def get_package_download_root(self):
     '''
