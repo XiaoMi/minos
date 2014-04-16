@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import owl_config
 import smtplib
 import time
 import urllib2
@@ -73,7 +74,7 @@ class Command(BaseCommand):
 
       # send email
       if task_success == False:
-        email_to = "infra-dev@xiaomi.com"
+        email_to = owl_config.FAILOVER_TO_EMAIL
         content = "Cluster healthy is " + str(task_cluster_healthy) + " and data consistent is " + str(task_data_consistent) + ".\nGo to owl for more details."
         logger.warning("Failover test fails, send email to " + email_to)
         mailer.send_email(content, "Failover Test Fails", to_mail)

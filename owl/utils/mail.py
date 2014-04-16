@@ -1,12 +1,13 @@
+import owl_config
 import smtplib
 from email.mime.text import MIMEText
 
 class Mailer:
   def __init__(self, options):
     self.options = options
-    self.from_email = 'admin'
-    self.smtp_host = 'localhost'
-    self.password = ''
+    self.from_email = owl_config.ALERT_FROM_EMAIL
+    self.smtp_host = owl_config.SMTPHOST
+    self.password = owl_config.ROBOT_EMAIL_PASSWORD
 
   def send_email(self, content, subject, to_email, type='plain'):
     send_email(content = content,

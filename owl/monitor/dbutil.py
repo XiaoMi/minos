@@ -379,7 +379,7 @@ def get_requests_distribution(owner):
   return (read_requests_dist, write_requests_dist)
 
 
-def alive_time_threshold(threshold_in_secs = 60):
+def alive_time_threshold(threshold_in_secs = 120):
   return datetime.datetime.utcfromtimestamp(time.time() - threshold_in_secs).replace(tzinfo=timezone.utc)
 
 def get_hbase_basic_info(cluster):
