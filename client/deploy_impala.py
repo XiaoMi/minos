@@ -21,11 +21,14 @@ def generate_configs(args):
     args.impala_config.configuration.generated_files["hdfs-site.xml"])
   hive_site_xml = deploy_utils.generate_site_xml(args,
     args.impala_config.configuration.generated_files["hive-site.xml"])
+  hbase_site_xml = deploy_utils.generate_site_xml(args,
+    args.impala_config.configuration.generated_files["hbase-site.xml"])
 
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
     "hive-site.xml": hive_site_xml,
+    "hbase-site.xml": hbase_site_xml,
   }
   config_files.update(args.impala_config.configuration.raw_files)
 
