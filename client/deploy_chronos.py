@@ -16,6 +16,21 @@ ALL_JOBS = ["chronos"]
 def _get_chronos_service_config(args):
   args.chronos_config = deploy_utils.get_service_config(args)
 
+def generate_zk_jaas_config(args):
+  if not deploy_utils.is_security_enabled(args):
+    return ""
+
+  config_dict = args.chronos_config.configuration.generated_files["jaas.conf"]
+
+  for key, value in config_dict.items()[1:]:
+    if value != "true" and value != "false" and value.find("\"") == -1:
+      config_dict[key] = "\"" + value + "\""
+
+  header_line = config_dict["headerLine"]
+  return "Client {\n  %s\n%s;\n};" % (header_line,
+    "\n".join(["  %s=%s" % (key, value)
+      for (key, value) in config_dict.iteritems() if key != config_dict.keys()[0]]))
+
 def generate_configs(args, job_name, host_id, instance_id):
   chronos_cfg_dict = args.chronos_config.configuration.generated_files["chronos.cfg"]
   hosts = args.chronos_config.jobs[job_name].hosts
@@ -23,6 +38,7 @@ def generate_configs(args, job_name, host_id, instance_id):
 
   config_files = {
     "chronos.cfg": chronos_cfg,
+    "jaas.conf" : generate_zk_jaas_config(args),
   }
   config_files.update(args.chronos_config.configuration.raw_files) # what's this?
 

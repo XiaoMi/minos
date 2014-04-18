@@ -432,6 +432,9 @@ def is_security_enabled(args):
     core_site_dict = args.fds_config.configuration.generated_files["core-site.xml"]
     return (core_site_dict["hadoop.security.authentication"] == "kerberos") and (
              core_site_dict["hadoop.security.authorization"] == "true")
+  elif args.service == "chronos":
+    chronos_dict = args.chronos_config.configuration.generated_files["chronos.cfg"]
+    return (chronos_dict["zkSecure"] == "true")
   else:
     return False
 
