@@ -1,0 +1,5 @@
+configobj>=4.7.2
+django>=1.5.5
+meld3>=0.6.10
+elementtree>=1.2.6-20050316
+pexpect>=3.0
