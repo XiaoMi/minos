@@ -12,7 +12,8 @@ def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
 
   artifact_and_version = "storm-" + args.storm_config.cluster.version
 
-  jar_dirs = "$package_dir/*"
+  component_dir = "$package_dir"
+  jar_dirs = "%s/:%s/lib/*:%s/*" % (component_dir, component_dir, component_dir)
   log_level = deploy_utils.get_service_log_level(args, args.storm_config)
 
   params = job.get_arguments(args, args.storm_config.cluster, args.storm_config.jobs,
