@@ -15,6 +15,7 @@
                     <th>read qps</th>
                     <th>write qps</th>
                     <th><a href="/monitor/table/count_rows">count rows<a></th>
+                    <th>last update time</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -32,6 +33,7 @@
                             <button class="btn" onclick="confirm_add_to_count({{ table.id }})");">Add to count</button>
                           {% endif %}
                         </td>
+                        <td>{{ table.last_update_time }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>

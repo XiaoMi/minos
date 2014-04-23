@@ -193,6 +193,7 @@ class Table(models.Model):
 
   rows = models.IntegerField(default = -1)
   is_count_rows = models.BooleanField(default=False)
+  last_update_time = models.DateTimeField(default=DEFAULT_DATETIME)
   
   def __unicode__(self):
     return unicode(self.name)

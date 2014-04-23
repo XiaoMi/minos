@@ -44,6 +44,7 @@ class Command(BaseCommand):
           logger.info("Count error, will not update the database")
         else:
           table.rows = count
+          table.last_update_time = datetime.datetime.now()
           table.save()
           logger.info("Save the new rows " + table.rows + " in database")
 
@@ -73,8 +74,9 @@ class Command(BaseCommand):
     logger.info("Count the rows of " + table_name + " in " + cluster_name)
 
     try:
-      # deploy shell hbase sdtst-miliao org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter _acl_ --maxthread=1 --speed=100000
-      command_list = ["deploy", "shell", "hbase"] + [cluster_name] + ["org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter"] + [table_name] + ["--maxthread=1", "--speed=100000"]
+      # deploy shell hbase sdtst-miliao org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter _acl_ --speed=3000
+      deploy_command = settings.DEPLOY_COMMAND
+      command_list = [deploy_command, "shell", "hbase"] + [cluster_name] + ["org.apache.hadoop.hbase.coprocessor.example.CoprocessorRowcounter"] + [table_name] + ["--speed=3000"]
 
       rowcounter_process = subprocess.Popen(command_list, stdout=subprocess.PIPE)
       rowcounter_result = rowcounter_process.communicate()

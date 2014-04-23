@@ -221,6 +221,7 @@ FAILOVER_FRAMEWORK_PORT = 9981
 FAILOVER_FRAMEWORK_PERIOD = 600
 
 # for count rows of monitor app
+DEPLOY_COMMAND = "/home/work/infra/minos/client/deploy"
 COUNT_PERIOD = 30
 COUNT_START_HOUR = 0
 COUNT_END_HOUR = 6
