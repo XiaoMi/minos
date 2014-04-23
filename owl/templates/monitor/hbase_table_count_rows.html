@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <span class="label label-info">Period: {{ count_period }} days</span>
+    <span class="label label-warning">Start Time: {{ count_start_hour }} o'clock</span>
+    <span class="label label-success">End Time: {{ count_end_hour }} o'clock</span>
+
+    <hr/>
+    
+    <div class="row">
+      <div class="span6">
+        <table class="table table-striped table-bordered table-hover">
+          <thead>
+            <tr>
+              <th>tables to count</th>
+              <th>cluster</th>
+              <th>operate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for table in tables_to_count %}
+              <tr>
+                <td><a href="/monitor/table/{{ table.id }}">{{ table.name }}</a></td>
+                <td><a href="/monitor/cluster/{{ table.cluster.id }}/table">{{ table.cluster.name }}</a></td>
+                <td><button class="btn" onclick="confirm_cancel_to_count({{ table.id }})">Cancel</button></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="span6">
+        <table class="table table-striped table-bordered table-hover">
+          <thead>
+            <tr>
+              <th>tables not to count</th>
+              <th>cluster</th>
+              <th>operate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for table in tables_not_to_count %}
+              <tr>
+                <td><a href="/monitor/table/{{ table.id }}">{{ table.name }}</a></td>
+                <td><a href="/monitor/cluster/{{ table.cluster.id }}/table">{{ table.cluster.name }}</a></td>
+                <td><button class="btn" onclick="confirm_add_to_count({{ table.id }})">Add</button></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      function confirm_add_to_count(table_id) {
+        if(confirm("Confirm add to count?")) {
+          var xmlhttp;
+          if (window.XMLHttpRequest) {
+            xmlhttp=new XMLHttpRequest(); // for IE7+, Firefox, Chrome, Opera, Safari
+          } else {
+            xmlhttp=new ActiveXObject("Microsoft.XMLHTTP"); // for IE6, IE5
+          }
+          xmlhttp.onreadystatechange=function() {
+            if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+              location.reload();
+            }
+          }
+          xmlhttp.open("GET","/monitor/table/add_count_rows/"+table_id, true);
+          xmlhttp.send();
+        }else{
+          // do nothing
+        }
+      }
+
+      function confirm_cancel_to_count(table_id) {
+        if(confirm("Confirm not to count?")) {
+          var xmlhttp;
+          if (window.XMLHttpRequest) {
+            xmlhttp=new XMLHttpRequest(); // for IE7+, Firefox, Chrome, Opera, Safari
+          } else {
+            xmlhttp=new ActiveXObject("Microsoft.XMLHTTP"); // for IE6, IE5
+          }
+          xmlhttp.onreadystatechange=function() {
+            if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+              location.reload();
+            }
+          }
+          xmlhttp.open("GET","/monitor/table/cancel_count_rows/"+table_id, true);
+          xmlhttp.send();
+        }else{
+          // do nothing
+        }
+      }
+    </script>
+{% endblock %}

@@ -191,6 +191,9 @@ class Table(models.Model):
   availability = models.FloatField(default=-1.0)
   operationMetrics = models.TextField() # save operation metrics as json format
 
+  rows = models.IntegerField(default = -1)
+  is_count_rows = models.BooleanField(default=False)
+  
   def __unicode__(self):
     return unicode(self.name)
 
