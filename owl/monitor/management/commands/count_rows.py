@@ -83,12 +83,12 @@ class Command(BaseCommand):
       rowcounter_status = rowcounter_process.wait()
 
       # e.g. "_acl_ 2014-4-18 3"
-      pattern = table_name + " \\d+\\-\\d+\\-\\d+ (\\d)"; 
+      pattern = table_name + " \\d+\\-\\d+\\-\\d+ (\\d+)"; 
       compiled_pattern = re.compile(pattern)
       re_result = compiled_pattern.search(rowcounter_result[0])
       return re_result.group(1)
     except:
-      logger.error("Error to count rows, make sure kinit to run CoprocessorRowcounter")
+      logger.error("Error to count rows, make sure kinit to run CoprocessorRowcounter and set DEPLOY_COMMAND")
       return -1
 
 
