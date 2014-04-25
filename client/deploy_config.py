@@ -119,7 +119,7 @@ class DeployConfig:
     '''
     Get the local storm tarball directory
     '''
-    return '%s/storm-core/target' % self.get_storm_root()
+    return '%s/storm-dist/binary/target' % self.get_storm_root()
 
   def get_galaxy_root(self):
     '''

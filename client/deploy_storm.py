@@ -10,7 +10,7 @@ def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
   supervisor_client = deploy_utils.get_supervisor_client(host,
       "storm", args.storm_config.cluster.name, job_name, instance_id=instance_id)
 
-  artifact_and_version = "storm-" + args.storm_config.cluster.version
+  artifact_and_version = "apache-storm-" + args.storm_config.cluster.version
 
   component_dir = "$package_dir"
   jar_dirs = "%s/:%s/lib/*:%s/*" % (component_dir, component_dir, component_dir)
@@ -62,12 +62,12 @@ def _get_storm_service_config(args):
 
 def install(args):
   _get_storm_service_config(args)
-  deploy_utils.install_service(args, "storm", args.storm_config, "storm")
+  deploy_utils.install_service(args, "storm", args.storm_config, "apache-storm")
 
 def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
   # parse the service_config according to the instance_id
   args.storm_config.parse_generated_config_files(args, job_name, host_id, instance_id)
-  deploy_utils.bootstrap_job(args, "storm", "storm",
+  deploy_utils.bootstrap_job(args, "apache-storm", "storm",
       args.storm_config, host, job_name, instance_id, cleanup_token, '0')
   start_job(args, host, job_name, host_id, instance_id)
 
@@ -90,7 +90,7 @@ def start_job(args, host, job_name, host_id, instance_id):
   start_script = generate_start_script(args, host, job_name, host_id, instance_id)
   http_url = deploy_utils.get_http_service_uri(host,
     args.storm_config.jobs[job_name].base_port, instance_id)
-  deploy_utils.start_job(args, "storm", "storm", args.storm_config,
+  deploy_utils.start_job(args, "apache-storm", "storm", args.storm_config,
       host, job_name, instance_id, start_script, http_url, **config_files)
 
 def start(args):
