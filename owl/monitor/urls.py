@@ -12,7 +12,6 @@ urlpatterns = patterns(
   url(r'^counters/', views.show_all_counters),
   url(r'^addCounter/$', views.add_counter),
 
-
   url(r'^service/(?P<id>\d+)/$', views.show_service),
   url(r'^cluster/(?P<id>\d+)/$', views.show_cluster),
   url(r'^cluster/(?P<id>\d+)/task/$', views.show_cluster_task_board),
@@ -29,6 +28,9 @@ urlpatterns = patterns(
   url(r'^table/$', views.show_all_tables),
   url(r'^table/(?P<id>\d+)/$', views.show_table),
   url(r'^table/operation/(?P<id>\d+)/$', views.show_table_operation),
+  url(r'^table/count_rows/$', views.show_table_count_rows),
+  url(r'^table/add_count_rows/(?P<id>\d+)/$', views.add_table_count_rows),
+  url(r'^table/cancel_count_rows/(?P<id>\d+)/$', views.cancel_table_count_rows),
   url(r'^cluster/operation/(?P<id>\d+)/$', views.show_cluster_operation),
   url(r'^cluster/operation/tablecomparsion/(?P<id>\d+)/$', views.show_cluster_operation_table_comparison),
   url(r'^regionserver/(?P<id>\d+)/$', views.show_regionserver),

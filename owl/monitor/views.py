@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from django.conf import settings
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 
@@ -8,6 +9,8 @@ from django.utils import timezone
 from django.http import HttpResponse
 from django.db import transaction
 from utils.quota_util import QuotaUpdater
+
+from models import Table
 
 import datetime
 import dbutil
@@ -328,6 +331,33 @@ def show_table_operation(request, id):
     'endpoint' : endpoint
   }
   return respond(request, 'monitor/hbase_table_operation.html', params)
+
+#url: /table/count_rows
+def show_table_count_rows(request):
+  tables_to_count = Table.objects.filter(is_count_rows=True)
+  tables_not_to_count = Table.objects.filter(is_count_rows=False)
+  params = {
+    'count_period': settings.COUNT_PERIOD,
+    'count_start_hour': settings.COUNT_START_HOUR,
+    'count_end_hour': settings.COUNT_END_HOUR,
+    'tables_to_count': tables_to_count,
+    'tables_not_to_count': tables_not_to_count
+  }
+  return respond(request, 'monitor/hbase_table_count_rows.html', params)
+
+#url: /table/add_table_count_rows/$table_id
+def add_table_count_rows(request, id):
+  table = dbutil.get_table(id)
+  table.is_count_rows = True
+  table.save()
+  return HttpResponse()
+
+#url: /table/cancel_table_count_rows/$table_id
+def cancel_table_count_rows(request, id):
+  table = dbutil.get_table(id)
+  table.is_count_rows = False
+  table.save()
+  return HttpResponse()
 
 #url: /regionserver/operation/$rs_id
 def show_regionserver_operation(request, id):

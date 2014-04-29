@@ -119,7 +119,7 @@ def get_local_package_path(artifact, version):
     package_path = get_local_package_path_general(
         get_deploy_config().get_kafka_package_dir(),
         artifact, version)
-  elif artifact == "storm":
+  elif artifact == "apache-storm":
     package_path = get_local_package_path_general(
         get_deploy_config().get_storm_package_dir(),
         artifact, version)
