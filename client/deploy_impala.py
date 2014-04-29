@@ -9,7 +9,7 @@ import deploy_utils
 
 from log import Log
 
-ALL_JOBS = ["statestored", "impalad"]
+ALL_JOBS = ["statestored", "catalogd", "impalad"]
 
 def get_impala_service_config(args):
   args.impala_config = deploy_utils.get_service_config(args)
