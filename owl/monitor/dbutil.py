@@ -156,7 +156,12 @@ def map_cluster_to_endpoint(cluster_name):
 def generate_perf_counter_of_operation_metrics(record, group):
     if record.operationMetrics is None or record.operationMetrics == '':
       return
-    operationMetrics = json.loads(record.operationMetrics)
+    operationMetrics = {}
+    try:
+      operationMetrics = json.loads(record.operationMetrics)
+    except Exception as e:
+      logger.warning("operationMetrics error: %r for record: %s", e, record)
+
     for operationName in operationMetrics.keys():
       operation = operationMetrics[operationName]
       # report NumOps

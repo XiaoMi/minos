@@ -57,6 +57,8 @@ class MetricsCollector():
       for endpoint, group_metrics in metrics['data'].iteritems():
         for group, key_metrics in group_metrics.iteritems():
           for key, metric in key_metrics.iteritems():
+            if key.find('#') != -1:
+              key = key.replace("#", "_")
             value = metric['value']
             self.append_to_file(out_file, timestamp, key, value, endpoint, group)
             if key not in self.tsdb_register.register_keys:
