@@ -14,6 +14,7 @@ import deploy_kafka
 import deploy_storm
 import deploy_fds
 import deploy_chronos
+import deploy_mapreduce
 
 from log import Log
 
@@ -26,7 +27,8 @@ SERVICE_DEPLOY_TOOL_MAP = {
   "kafka": deploy_kafka,
   "storm": deploy_storm,
   "fds": deploy_fds,
-  "chronos": deploy_chronos
+  "chronos": deploy_chronos,
+  "mapreduce": deploy_mapreduce,
 }
 
 LOG_LEVEL_RANGE_MAP = [

@@ -317,7 +317,7 @@ def get_root_dir(service):
   @param  service  the service name
   @return string   the local root directory of the service
   '''
-  if service == "hdfs" or service == "yarn":
+  if service == "hdfs" or service == "yarn" or service == "mapreduce":
     return get_deploy_config().get_hadoop_root()
   if service == "hbase":
     return get_deploy_config().get_hbase_root()
