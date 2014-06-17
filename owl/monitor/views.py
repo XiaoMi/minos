@@ -303,6 +303,22 @@ def show_table(request, id):
   write_requests_dist_by_rs_chart = loader.get_template('monitor/requests_dist_column_chart.tpl').render(
     Context(params))
 
+  memstore_size_dist_by_region, storefile_size_dist_by_region = dbutil.get_data_distribution(table)
+
+  params = {
+    'chart_id': 'memstore_size_dist_by_region',
+    'chart_title': 'memstore size on region',
+    'request_dist': memstore_size_dist_by_region,
+    }
+  memstore_size_dist_by_region_chart = loader.get_template('monitor/requests_dist_column_chart.tpl').render(Context(params))
+
+  params = {
+    'chart_id': 'storefile_size_dist_by_region',
+    'chart_title': 'storefile size on region',
+    'request_dist': storefile_size_dist_by_region,
+    }
+  storefile_size_dist_by_region_chart = loader.get_template('monitor/requests_dist_column_chart.tpl').render(Context(params))
+
   group = str(table)
   tsdb_read_query = [metric_helper.make_metric_query(cluster.name, group, 'readRequestsCountPerSec')]
   tsdb_write_query = [metric_helper.make_metric_query(cluster.name, group, 'writeRequestsCountPerSec')]
@@ -312,6 +328,8 @@ def show_table(request, id):
     'table': table,
     'read_requests_dist_by_rs_chart': read_requests_dist_by_rs_chart,
     'write_requests_dist_by_rs_chart': write_requests_dist_by_rs_chart,
+    'memstore_size_dist_by_region_chart': memstore_size_dist_by_region_chart,
+    'storefile_size_dist_by_region_chart': storefile_size_dist_by_region_chart,
     'tsdb_read_query': tsdb_read_query,
     'tsdb_write_query': tsdb_write_query,
   }

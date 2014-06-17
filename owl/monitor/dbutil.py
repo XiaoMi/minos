@@ -383,6 +383,14 @@ def get_requests_distribution(owner):
 
   return (read_requests_dist, write_requests_dist)
 
+def get_data_distribution(owner):
+  memstore_size_dist = []
+  storefile_size_dist = []
+  for region in owner.region_set.filter(last_attempt_time__gte = alive_time_threshold()).order_by('name'):
+    memstore_size_dist.append((str(region), region.memStoreSizeMB))
+    storefile_size_dist.append((str(region), region.storefileSizeMB))
+
+  return (memstore_size_dist, storefile_size_dist)
 
 def alive_time_threshold(threshold_in_secs = 120):
   return datetime.datetime.utcfromtimestamp(time.time() - threshold_in_secs).replace(tzinfo=timezone.utc)
