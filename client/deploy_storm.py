@@ -146,6 +146,22 @@ def restart(args):
           args.storm_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
         start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
 
+def generate_cleanup_script(args, job_name):
+  storm_yaml_dict = args.storm_config.configuration.generated_files["storm.yaml"]
+  script_dict = {
+    "job_name": job_name,
+    "storm_local_dir": storm_yaml_dict['storm.local.dir'],
+  }
+  return deploy_utils.create_run_script(
+    "%s/storm/cleanup_storm.sh.tmpl" % deploy_utils.get_template_dir(), script_dict)
+
+def cleanup_job(args, host, job_name, host_id, instance_id, cleanup_token):
+  cleanup_script = str()
+  if job_name == "supervisor":
+    cleanup_script = generate_cleanup_script(args, job_name)
+  deploy_utils.cleanup_job("storm", args.storm_config,
+    host, job_name, instance_id, cleanup_token, cleanup_script)
+
 def cleanup(args):
   _get_storm_service_config(args)
 
@@ -157,8 +173,7 @@ def cleanup(args):
     for host_id in args.task_map.keys() or hosts.keys():
       for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
         instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.cleanup_job("storm", args.storm_config,
-          hosts[host_id].ip, job_name, instance_id, cleanup_token)
+        cleanup_job(args, hosts[host_id].ip, job_name, host_id, instance_id, cleanup_token)
 
 def show(args):
   _get_storm_service_config(args)
