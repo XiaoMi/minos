@@ -260,6 +260,8 @@ TASK_METRICS_VIEW_CONFIG = {
         [('RegionServer', 'flushTime', 'second(s)')],
         [('RegionServer', 'flushSize', 'byte(s)')],
         [('RegionServer', 'hlogRollCount', 'count(s)')],
+        [('RegionServer', 'hlogFileCount', 'num')],
+        [('RegionServer', 'hlogFileSizeMB', 'MB')],
       ]),
       ('BlockCache', [
         [('RegionServer', 'blockCacheCount', 'count(s)')],
