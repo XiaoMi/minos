@@ -106,7 +106,8 @@ class MetricSource:
     self.collector_config = collector_config
     self.task = task
     self.url = "http://%s:%d%s" % (
-      task.host, task.port, task.job.cluster.service.metric_url)
+      task.host, task.port,
+      self.collector_config.config.get(task.job.cluster.service.name, "metric_url"))
     self.need_analyze = collector_config.services[task.job.cluster.service.name].need_analyze
 
   def schedule_next_fetch(self, input_queue):

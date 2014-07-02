@@ -34,7 +34,11 @@ def is_master_active(task):
   try:
     metric = get_latest_metric(task,
       "hadoop:service=Master,name=Master", "IsActiveMaster")
-    return bool(metric)
+    # the active master metric for hbase 0.98
+    metric_new = get_latest_metric(task,
+      "Hadoop:service=HBase,name=Master,sub=Server", "tag.isActiveMaster")
+    metric_new = 0 if not metric_new == 'true' else 1
+    return bool(metric) or bool(metric_new)
   except Exception as e:
     logger.warning("%r failed to get metric: %r", task, e)
     return False
