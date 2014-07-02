@@ -176,6 +176,14 @@ LOGGING = {
       'class': 'logging.FileHandler',
       'filename': 'debug.log',
       'formatter': 'verbose'
+    },
+    'rotating_file':{
+      'level': 'DEBUG',
+      'class': 'logging.handlers.RotatingFileHandler',
+      'filename': 'collector.log',
+      'maxBytes': 1024 * 1024 * 512, # 512M
+      'backupCount': 14,
+      'formatter': 'verbose'
     }
   },
   'loggers': {
@@ -190,7 +198,7 @@ LOGGING = {
       'propagate': True,
     },
     'collector': {
-      'handlers': ['console'],
+      'handlers': ['console', 'rotating_file'],
       'level': 'INFO',
       'propagate': True,
     },
