@@ -19,7 +19,7 @@ MANAGERS = ADMINS
 DATABASES = {
   'default': {
     'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.
-    'NAME': 'owl', # Or path to database file if using sqlite3.
+    'NAME': 'work_owl', # Or path to database file if using sqlite3.
     'USER': 'owl', # Not used with sqlite3.
     'PASSWORD': 'owl', # Not used with sqlite3.
     'HOST': 'localhost', # Set to empty string for localhost. Not used with sqlite3.
@@ -198,7 +198,7 @@ LOGGING = {
       'propagate': True,
     },
     'collector': {
-      'handlers': ['console', 'rotating_file'],
+      'handlers': ['rotating_file'],
       'level': 'INFO',
       'propagate': True,
     },

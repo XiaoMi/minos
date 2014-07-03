@@ -12,8 +12,6 @@ def get_quota_summary(cluster_name):
   try:
     cmd_user = [ENV_PYTHON, CLIENT_DEPLOY_ENTRY, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/user/*']
     cmd_hbase = [ENV_PYTHON, CLIENT_DEPLOY_ENTRY, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/hbase']
-    #cmd_user = ["python2.7", "%s/deploy.py" % client_root, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/user/*']
-    #cmd_hbase = ["python2.7", "%s/deploy.py" % client_root, 'shell', 'hdfs', cluster_name, 'dfs', '-quota', '/hbase']
     for cmd in [cmd_user, cmd_hbase]:
       content = subprocess.check_output(cmd)
 
