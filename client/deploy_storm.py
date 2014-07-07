@@ -2,7 +2,7 @@ import deploy_utils
 
 from log import Log
 
-ALL_JOBS = ["nimbus", "supervisor", "ui", "logviewer"]
+ALL_JOBS = ["nimbus", "supervisor", "ui", "logviewer", "metricserver"]
 
 def generate_run_scripts_params(args, host, job_name, host_id, instance_id):
   job = args.storm_config.jobs[job_name]

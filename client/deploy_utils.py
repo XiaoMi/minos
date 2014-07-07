@@ -274,10 +274,29 @@ def generate_yaml_file(yaml_dict):
   @param  yaml_dict     the yaml dict
   @return string        the generated file content
   '''
+  NESTING_DICT_REGEX = re.compile('\{(?P<consumers>.+?)\}')
   yaml_format_string = ""
   for key, value in yaml_dict.iteritems():
     yaml_format_string += key
-    if value.find(',') != -1:
+    reg_expr = NESTING_DICT_REGEX.match(value)
+    # the format of consumers: 
+    #   different consumers separated by ';'
+    #   different key-value pairs separated by ',' within the same consumer
+    #   the key and value separated by ':'
+    # for example: '{class:consumer_1,parallelism.hint:xx;class:consumer_2,...}'
+    if reg_expr:
+      consumers = reg_expr.group('consumers')
+      consumer_list = consumers.split(';')
+      # process consumers one by one
+      for consumer in consumer_list:
+        key_value_list = consumer.split(',')
+        class_name = key_value_list[0].split(':')[1]
+        yaml_format_string += ":\n  - class: %s\n" % class_name
+        # process parallelism and other arguments
+        for key_value_pair in key_value_list[1:]:
+          key, value = key_value_pair.split(':')
+          yaml_format_string += "    %s: %s\n" % (key, value)
+    elif value.find(',') != -1:
       yaml_format_string += ":\n"
       for item in value.split(','):
         yaml_format_string += "  - %s\n" % item
