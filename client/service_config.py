@@ -63,7 +63,7 @@ def get_service_job_task_port_addition_result(args, cluster, jobs,
   service_config = get_service_config(args, service, cluster)
   host_id, instance_id = parse_task_number(task_id,
     service_config.jobs[job_name].hosts)
-  return get_base_port(service_config.jobs[job_name].base_port, instance_id)
+  return get_base_port(service_config.jobs[job_name].base_port, instance_id) + add_num
 
 def get_service_cluster_name(service, cluster):
   if service == "zookeeper":
@@ -78,6 +78,12 @@ def get_service_cluster_name(service, cluster):
     hbase_cluster = cluster.hbase_cluster
     if hbase_cluster != cluster.name:
       return hbase_cluster
+    else:
+      return cluster.name
+  elif service == "yarn":
+    yarn_cluster = cluster.yarn_cluster
+    if yarn_cluster != cluster.name:
+      return yarn_cluster
     else:
       return cluster.name
 
@@ -322,6 +328,7 @@ CLUSTER_SCHEMA = {
   "timestamp": (str, ""),
   "hdfs_cluster": (str, ""),
   "hbase_cluster": (str, ""),
+  "yarn_cluster": (str, ""),
   "log_level": (str, "info"),
 }
 
@@ -556,7 +563,6 @@ class ServiceConfig:
 
     if child_config_dict['configuration'].has_key('base'):
       config_path = child_config_dict['configuration']['base']
-
       if config_path.find('%') != -1:
         config_path = self.parse_item(None, None, None, item=config_path)
 
@@ -615,7 +621,6 @@ class ServiceConfig:
           new_item.append(callback(args, cluster, jobs, parsing_service,
             current_job, host_id, instance_id, reg_expr[iter]))
           break
-
     for iter in range(len(new_item)):
       item = item.replace("%{"+reg_expr[iter]+"}", str(new_item[iter]))
     return item
@@ -675,7 +680,6 @@ class ServiceConfig:
             file_dict[key] = ServiceConfig.parse_item(args, cluster, jobs,
               parsing_service, current_job, host_id, instance_id, value)
         generated_files[file_name] = file_dict
-
     return generated_files
 
 

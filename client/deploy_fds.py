@@ -2,7 +2,7 @@ import deploy_utils
 
 from log import Log
 
-ALL_JOBS = ["restserver", "proxy"]
+ALL_JOBS = ["restserver", "proxy", "cleaner"]
 
 def _get_fds_service_config(args):
   args.fds_config = deploy_utils.get_service_config(args)
@@ -72,13 +72,18 @@ def generate_configs(args, host, job_name, instance_id):
     args.fds_config.configuration.generated_files["galaxy-site.xml"])
   zookeeper_properties = deploy_utils.generate_properties_file(args,
       args.fds_config.configuration.generated_files["zookeeper.properties"])
-
+  mapred_site_xml = deploy_utils.generate_site_xml(args,
+    args.fds_config.configuration.generated_files["mapred-site.xml"])
+  yarn_site_xml = deploy_utils.generate_site_xml(args,
+    args.fds_config.configuration.generated_files["yarn-site.xml"])
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
     "hbase-site.xml": hbase_site_xml,
     "galaxy-site.xml": galaxy_site_xml,
     "zookeeper.properties": zookeeper_properties,
+    "mapred-site.xml": mapred_site_xml,
+    "yarn-site.xml": yarn_site_xml
   }
   config_files.update(args.fds_config.configuration.raw_files)
 
