@@ -133,6 +133,7 @@ INSTALLED_APPS = (
   'quota',
   'zktree',
   'failover_framework',
+  'machine',
   )
 
 # A sample logging configuration. The only tangible logging

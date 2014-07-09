@@ -1,5 +1,5 @@
 CHART_URL_PREFIX = 'charts'
-TSDB_ADDR = 'tsdb_addr'
+TSDB_ADDR = 'http://tsdb_addr:4242'
 SUPERVISOR_PORT = '9001'
 
 # cluster to generate quota report
@@ -16,3 +16,6 @@ ALERT_FROM_EMAIL = 'admin'
 ROBOT_EMAIL_PASSWORD = ''
 SMTPHOST = 'localhost'
 FAILOVER_TO_EMAIL = 'admin'
+
+# user who cound login django frontend as admins.
+DJANGO_ADMINS = []
