@@ -233,3 +233,9 @@ DEPLOY_COMMAND = "/home/work/infra/minos/client/deploy"
 COUNT_PERIOD = 30
 COUNT_START_HOUR = 0
 COUNT_END_HOUR = 6
+
+# Import the customized django settings of owl, which is located in
+# ${config_dir}/owl/owl_django_settings.py
+# We could overwrite existing settings, like database, or add new settings like
+# LDAP supporting.
+from owl_django_settings import *

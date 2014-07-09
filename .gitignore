@@ -4,6 +4,8 @@
 *~
 *.out
 *.log
+*.swp
 client/packages/
 build/env/
 build/download
+cli_log.txt
