@@ -16,6 +16,3 @@ ALERT_FROM_EMAIL = 'admin'
 ROBOT_EMAIL_PASSWORD = ''
 SMTPHOST = 'localhost'
 FAILOVER_TO_EMAIL = 'admin'
-
-# user who cound login django frontend as admins.
-DJANGO_ADMINS = []
