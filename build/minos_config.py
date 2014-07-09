@@ -37,6 +37,8 @@ SUPERVISOR_DEPLOYMENT_DIRS = [
 # owl
 OWL_PREREQUISITE_PYTHON_LIBS = [
   ('django', 'django', '1.5.5'),
+  ('ldap', 'python-ldap', '2.4.13'),
+  ('django_auth_ldap', 'django-auth-ldap', '1.1.6'),
   ('twisted', 'twisted', '13.2.0'),
   ('MySQLdb', 'Mysql-python', '1.2.5'),
   ('DBUtils', 'dbutils', '1.1'),
