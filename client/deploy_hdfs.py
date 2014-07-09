@@ -1,4 +1,5 @@
 import deploy_utils
+import parallel_deploy
 import service_config
 import subprocess
 import sys
@@ -171,7 +172,7 @@ def install(args):
   get_hdfs_service_config(args)
   deploy_utils.install_service(args, "hdfs", args.hdfs_config, "hadoop")
 
-def cleanup_job(args, host, job_name, host_id, instance_id, active, cleanup_token):
+def cleanup_job(args, host, job_name, host_id, instance_id, cleanup_token, active):
   cleanup_script = str()
   if job_name == "zkfc":
     cleanup_script = generate_cleanup_script(args, host, job_name, host_id, instance_id, active)
@@ -184,19 +185,20 @@ def cleanup(args):
   cleanup_token = deploy_utils.confirm_cleanup(args,
       "hdfs", args.hdfs_config)
 
-  first = True
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'cleanup', cleanup_token=cleanup_token)
+    parallel_deploy.start_deploy_threads(cleanup_job, task_list)
 
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        cleanup_job(args, hosts[host_id].ip, job_name, host_id, instance_id, first, cleanup_token)
-        if job_name == "zkfc":
-          first = False
+def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token, active):
+  if job_name == "namenode" and not active:
+    hosts = args.hdfs_config.jobs[job_name].hosts
+    while not deploy_utils.check_service(hosts[0].ip,
+      args.hdfs_config.jobs["namenode"].base_port):
+      Log.print_warning("Wait for active namenode starting")
+      time.sleep(2)
 
-def bootstrap_job(args, host, job_name, host_id, instance_id, active, cleanup_token):
   # parse the service_config according to the instance_id
   args.hdfs_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   data_dir_indexes = get_data_dir_indexes(args, job_name, host, instance_id)
@@ -220,25 +222,19 @@ def bootstrap(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    first = True
     if job_name == "namenode":
       while not check_journalnode_all_started(args):
         Log.print_warning("Wait for journalnode starting")
         time.sleep(2)
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        if job_name == "namenode" and not first:
-          while not deploy_utils.check_service(hosts[0].ip,
-              args.hdfs_config.jobs["namenode"].base_port):
-            Log.print_warning("Wait for active namenode starting")
-            time.sleep(2)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'bootstrap', cleanup_token=cleanup_token)
+    parallel_deploy.start_deploy_threads(bootstrap_job, task_list)
 
-        bootstrap_job(args, hosts[host_id].ip, job_name, host_id, instance_id, first, cleanup_token)
-        first = False
+def start_job(args, host, job_name, host_id, instance_id, is_wait=False):
+  if is_wait:
+    deploy_utils.wait_for_job_stopping("hdfs",
+      args.hdfs_config.cluster.name, job_name, host, instance_id)
 
-def start_job(args, host, job_name, host_id, instance_id):
   # parse the service_config according to the instance_id
   args.hdfs_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   start_script = generate_start_script(args, host, job_name, host_id, instance_id)
@@ -257,11 +253,8 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'start')
+    parallel_deploy.start_deploy_threads(start_job, task_list)
 
 def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("hdfs", args.hdfs_config,
@@ -274,11 +267,8 @@ def stop(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'stop')
+    parallel_deploy.start_deploy_threads(stop_job, task_list)
 
 def restart(args):
   if not args.skip_confirm:
@@ -287,33 +277,25 @@ def restart(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'stop')
+    parallel_deploy.start_deploy_threads(stop_job, task_list)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.wait_for_job_stopping("hdfs",
-          args.hdfs_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'start', is_wait=True)
+    parallel_deploy.start_deploy_threads(start_job, task_list)
+
+def show_job(args, host, job_name, instance_id):
+  deploy_utils.show_job("hdfs", args.hdfs_config, host, job_name, instance_id)
 
 def show(args):
   get_hdfs_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hdfs_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.show_job("hdfs", args.hdfs_config, hosts[host_id].ip,
-          job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'show')
+    parallel_deploy.start_deploy_threads(show_job, task_list)
 
 def run_shell(args):
   get_hdfs_service_config(args)

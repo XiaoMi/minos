@@ -2,6 +2,7 @@ import argparse
 import deploy_utils
 import deploy_zookeeper
 import os
+import parallel_deploy
 import pwd
 import socket
 import subprocess
@@ -129,6 +130,10 @@ def install(args):
   get_hbase_service_config(args)
   deploy_utils.install_service(args, "hbase", args.hbase_config, "hbase")
 
+def cleanup_job(args, host, job_name, host_id, instance_id, cleanup_token, active):
+  deploy_utils.cleanup_job("hbase", args.hbase_config,
+    host, job_name, instance_id, cleanup_token)
+
 def cleanup(args):
   get_hbase_service_config(args)
 
@@ -137,14 +142,11 @@ def cleanup(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.cleanup_job("hbase", args.hbase_config,
-          hosts[host_id].ip, job_name, instance_id, cleanup_token)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'cleanup', cleanup_token=cleanup_token)
+    parallel_deploy.start_deploy_threads(cleanup_job, task_list)
 
-def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token):
+def bootstrap_job(args, host, job_name, host_id, instance_id, cleanup_token, active):
   # parse the service_config according to the instance_id
   args.hbase_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   deploy_utils.bootstrap_job(args, "hbase", "hbase",
@@ -158,13 +160,14 @@ def bootstrap(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        bootstrap_job(args, hosts[host_id].ip, job_name, host_id, instance_id, cleanup_token)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'bootstrap', cleanup_token=cleanup_token)
+    parallel_deploy.start_deploy_threads(bootstrap_job, task_list)
 
-def start_job(args, host, job_name, host_id, instance_id):
+def start_job(args, host, job_name, host_id, instance_id, is_wait=False):
+  if is_wait:
+    deploy_utils.wait_for_job_stopping("hbase",
+      args.hbase_config.cluster.name, job_name, host, instance_id)
   # parse the service_config according to the instance_id
   args.hbase_config.parse_generated_config_files(args, job_name, host_id, instance_id)
   config_files = generate_configs(args, host, job_name, instance_id)
@@ -181,11 +184,8 @@ def start(args):
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'start')
+    parallel_deploy.start_deploy_threads(start_job, task_list)
 
 def stop_job(args, host, job_name, instance_id):
   deploy_utils.stop_job("hbase", args.hbase_config,
@@ -198,11 +198,8 @@ def stop(args):
 
   for job_name in args.job or reversed(ALL_JOBS):
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'stop')
+    parallel_deploy.start_deploy_threads(stop_job, task_list)
 
 def restart(args):
   if not args.skip_confirm:
@@ -211,33 +208,25 @@ def restart(args):
 
   for job_name in args.job or reversed(ALL_JOBS):
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        stop_job(args, hosts[host_id].ip, job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'stop')
+    parallel_deploy.start_deploy_threads(stop_job, task_list)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.wait_for_job_stopping("hbase",
-          args.hbase_config.cluster.name, job_name, hosts[host_id].ip, instance_id)
-        start_job(args, hosts[host_id].ip, job_name, host_id, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name,
+      'start', is_wait=True)
+    parallel_deploy.start_deploy_threads(start_job, task_list)
+
+def show_job(args, host, job_name, instance_id):
+  deploy_utils.show_job("hbase", args.hbase_config, host, job_name, instance_id)
 
 def show(args):
   get_hbase_service_config(args)
 
   for job_name in args.job or ALL_JOBS:
     hosts = args.hbase_config.jobs[job_name].hosts
-    args.task_map = deploy_utils.parse_args_host_and_task(args, hosts)
-    for host_id in args.task_map.keys() or hosts.keys():
-      for instance_id in args.task_map.get(host_id) or range(hosts[host_id].instance_num):
-        instance_id = -1 if not deploy_utils.is_multiple_instances(host_id, hosts) else instance_id
-        deploy_utils.show_job("hbase", args.hbase_config,
-          hosts[host_id].ip, job_name, instance_id)
+    task_list = deploy_utils.schedule_task_for_threads(args, hosts, job_name, 'show')
+    parallel_deploy.start_deploy_threads(show_job, task_list)
 
 def run_shell(args):
   get_hbase_service_config(args)

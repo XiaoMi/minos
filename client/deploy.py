@@ -48,6 +48,8 @@ def add_service_arguments(parser):
   parser.add_argument("--log_level", type=str, default="",
       choices=LOG_LEVEL_RANGE_MAP,
       help="The global log level to be configured for the service.")
+  parser.add_argument("--thread_num", type=int, default=1,
+      help="The number of threads used to deploy data nodes parallelly.")
   task_group = parser.add_mutually_exclusive_group()
   task_group.add_argument("--task", type=str, nargs="+",
       help="The list of tasks to be manipulated, separated by space. If task "

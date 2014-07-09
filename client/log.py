@@ -1,6 +1,9 @@
 import sys
+import threading
 
 from datetime import datetime
+
+mutex = threading.Lock()
 
 class Log:
   # We have such a agreement on verbosity level:
@@ -12,7 +15,9 @@ class Log:
 
   @staticmethod
   def _print(message):
+    mutex.acquire(1)
     print "%s %s" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), message)
+    mutex.release()
 
   @staticmethod
   def error_exit(print_stack):

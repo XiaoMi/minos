@@ -25,6 +25,10 @@ HOST_TASK_REGEX = re.compile('(?P<host>\d+)(\.(?P<task>\d+))?$')
 
 SUPERVISOR_SUCCESS = "OK"
 
+PARALLEL_DEPLOY_JOBS = ["datanode", "regionserver", "nodemanager",
+  "historyserver", "impalad", "supervisor", "logviewer", "kafka",
+  "kafkascribe"]
+
 STOPPED_STATUS = ["STOPPED", "BACKOFF", "EXITED", "FATAL"]
 
 HADOOP_PROPERTY_PREFIX = "hadoop.property."
@@ -1076,6 +1080,52 @@ def parse_args_host_and_task(args, hosts):
 def is_multiple_instances(host_id, hosts):
   # return False if deploy only one instance on the host
   return hosts[host_id].instance_num > 1
+
+def schedule_task_for_threads(args, hosts, job_name, command, cleanup_token='',
+  is_wait=False):
+  '''
+  Schedule the tasks according to the number of threads and return the task list.
+  The task list contains the parameter lists of function called by threads.
+
+  @param  args          the args
+  @param  hosts         the hosts of specific job
+  @param  job_name      the job name
+  @param  command       the deploy command: [bootstrap, start, stop, cleanup]
+  @param  cleanup_token the cleanup token
+  @param  is_wait       the flag whether to wait for stopping when starting a process
+  @return list          the task list for threads
+  '''
+  args.task_map = parse_args_host_and_task(args, hosts)
+  first = True
+
+  thread_num = 1
+  if job_name in PARALLEL_DEPLOY_JOBS and args.thread_num > 0:
+    thread_num = args.thread_num
+
+  task_list = range(thread_num)
+  for index in range(thread_num):
+    task_list[index] = []
+
+  for host_id in args.task_map.keys() or hosts.keys():
+    for instance_id in args.task_map.get(host_id) or range(
+      hosts[host_id].instance_num):
+
+      instance_id = -1 if not \
+        is_multiple_instances(host_id, hosts) else instance_id
+
+      if command == 'bootstrap' or command == 'cleanup':
+        func_args = (args, hosts[host_id].ip, job_name, host_id,
+          instance_id, cleanup_token, first)
+      elif command == 'start':
+        func_args = (args, hosts[host_id].ip, job_name, host_id,
+          instance_id, is_wait)
+      elif command == 'stop' or command == 'show':
+        func_args = (args, hosts[host_id].ip, job_name, instance_id)
+
+      task_list[host_id % thread_num].append(func_args)
+      first = False
+
+  return task_list
 
 if __name__ == '__main__':
   test()
