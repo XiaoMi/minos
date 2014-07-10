@@ -19,13 +19,13 @@
         <div class="row">
             <div class="span5">
                 <center>{{metrics.0.title}}</center>
-                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.0.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.0.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{metrics.0.query|pic_heigth}}" >
                     <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ metrics.0.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metrics.0.query|pic_heigth}}&png" />
                 </a>
             </div>
             <div class="span5">
                 <center>{{metrics.1.title}}</center>
-                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.1.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metrics.1.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{metrics.1.query|pic_heigth}}" >
                     <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{metrics.1.query|join:""}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metrics.1.query|pic_heigth}}&png" />
                 </a>
             </div>

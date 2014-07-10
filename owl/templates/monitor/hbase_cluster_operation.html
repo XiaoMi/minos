@@ -19,13 +19,13 @@
         <div class="row">
             <div class="span5">
                 <center>{{metric.1.title}}</center>
-                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metric.1.query}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metric.1.query}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{metric.1.query|pic_heigth}}" >
                     <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ metric.1.query}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metric.1.query|pic_heigth}}&png" />
                 </a>
             </div>
             <div class="span5">
                 <center>{{metric.2.title}}</center>
-                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metric.2.query}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
+                <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{metric.2.query}}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{metric.2.query|pic_heigth}}" >
                     <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{metric.2.query}}&yrange=[0:]&key=out%20center%20top&wxh={{5|pic_width}}x{{metric.2.query|pic_heigth}}&png" />
                 </a>
             </div>

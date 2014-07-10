@@ -48,8 +48,8 @@
             {% for graph in graphs %}
                 <div class="span5">
                     <center>{{graph.title}}</center>
-                    <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
-                        <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{tsdb_read_query|pic_heigth}}&png" />
+                    <a href="{{tsdb_url_prefix}}/#start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{12|pic_width}}x{{graph.query|pic_heigth}}" >
+                        <img src="{{tsdb_url_prefix}}/q?start={{start_date}}{{ graph.query|join:"" }}&yrange=[0:]&key=out%20center%20top&wxh={{6|pic_width}}x{{graph.query|pic_heigth}}&png" />
                     </a>
                 </div>
                 {% if forloop.counter|divisibleby:2 %}
