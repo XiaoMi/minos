@@ -27,12 +27,12 @@
     </div>
     <div class="row">
         <div class = "span6">
-            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
                 <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ used_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{used_quota_query|pic_heigth}}&png" />
             </a>
         </div>
         <div class = "span6">
-            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_space_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh=1000x400" >
+            <a href="{{tsdb_url_prefix}}/#start={{quota_start_date}}{{ used_space_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{12|pic_width}}x{{tsdb_read_query|pic_heigth}}" >
                 <img src="{{tsdb_url_prefix}}/q?start={{quota_start_date}}{{ used_space_quota_query|join:""}}&yrange=[0:]&key=out center top&wxh={{6|pic_width}}x{{used_space_quota_query|pic_heigth}}&png" />
             </a>
         </div>

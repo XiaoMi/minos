@@ -35,7 +35,7 @@ def pic_width(span):
 # generate picture height
 @register.filter(name='pic_heigth')
 def pic_heigth(metrics):
-  return 350
+  return len(metrics) * 10 + 450
 
 # format big number
 @register.filter(name='format_bigint')
