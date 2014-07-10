@@ -54,6 +54,12 @@ def get_cluster(id):
   except Cluster.DoesNotExist:
     return None
 
+def get_hdfs_cluster_by_name(name):
+  try:
+    hdfs_service_id = Service.objects.get(name='hdfs', active=True).id
+    return Cluster.objects.get(service_id=hdfs_service_id, name=name, active=True)
+  except Cluster.DoesNotExist:
+    return None
 
 def get_jobs_by_cluster(cluster_id):
   return Job.objects.filter(cluster=cluster_id, active=True).all()

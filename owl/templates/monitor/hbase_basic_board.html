@@ -13,6 +13,14 @@
                 <td>{{ cluster.name}}</a></td>
             </tr>
             <tr>
+                <td>hdfs owl entry</td>
+                <td>
+                  {% if hdfs_cluster %}
+                    <a href="/monitor/cluster/{{ hdfs_cluster.id }}/task/">{{ hdfs_cluster.name }}</a>
+                  {% endif %}
+                </td>
+            </tr>
+            <tr>
                 <td>hbase entry</td>
                 <td><a href="http://{{ basic_info.hbase_entry }}">{{ basic_info.hbase_entry}}</a></td>
             </tr>

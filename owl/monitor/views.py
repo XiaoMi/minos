@@ -200,6 +200,7 @@ def show_cluster_basic_board(request, id):
     return HttpResponse('')
 
   basic_info = dbutil.get_hbase_basic_info(cluster)
+  hdfs_cluster = dbutil.get_hdfs_cluster_by_name(cluster.name)
 
   group = 'Cluster'
   tsdb_read_query = [metric_helper.make_metric_query(cluster.name, group, 'readRequestsCountPerSec')]
@@ -207,6 +208,7 @@ def show_cluster_basic_board(request, id):
 
   params = {
     'cluster': cluster,
+    'hdfs_cluster': hdfs_cluster,
     'basic_info': basic_info,
     'tsdb_read_query': tsdb_read_query,
     'tsdb_write_query': tsdb_write_query,
