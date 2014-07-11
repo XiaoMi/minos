@@ -198,13 +198,15 @@ def make_operation_metrics(endpoint, record, group):
       operationNumOpsName = operationName + '_NumOps'
       numOpsCounter = {}
       numOpsCounter['title'] = operationNumOpsName
-      numOpsCounter['query'] = [].append(make_ops_metric_query(endpoint, group, operationNumOpsName))
+      numOpsCounter['query'] = []
+      numOpsCounter['query'].append(make_ops_metric_query(endpoint, group, operationNumOpsName))
       operationCounter.append(numOpsCounter)
 
       operationAvgTimeName = operationName + '_AvgTime'
       avgTimeCounter = {}
       avgTimeCounter['title'] = operationAvgTimeName
-      avgTimeCounter['query'] = [].append(make_latency_metric_query(endpoint, group, operationAvgTimeName))
+      avgTimeCounter['query'] = []
+      avgTimeCounter['query'].append(make_latency_metric_query(endpoint, group, operationAvgTimeName))
       operationCounter.append(avgTimeCounter)
 
       metrics.append(operationCounter)
