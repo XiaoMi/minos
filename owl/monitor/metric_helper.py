@@ -26,7 +26,7 @@ def form_percentile_counter_name(endpoint, group, operationName):
   percentiles = []
   for suffix in OPERATION_HISTOGRAM_PERCENTILES:
     percentiles.append(make_latency_metric_query(endpoint, group, '%s_%s' % (operationName, suffix)))
-  return ''.join(percentiles)
+  return percentiles
 
 # parse bean name
 # return (service, name)
@@ -198,13 +198,13 @@ def make_operation_metrics(endpoint, record, group):
       operationNumOpsName = operationName + '_NumOps'
       numOpsCounter = {}
       numOpsCounter['title'] = operationNumOpsName
-      numOpsCounter['query'] = make_ops_metric_query(endpoint, group, operationNumOpsName)
+      numOpsCounter['query'] = [].append(make_ops_metric_query(endpoint, group, operationNumOpsName))
       operationCounter.append(numOpsCounter)
 
       operationAvgTimeName = operationName + '_AvgTime'
       avgTimeCounter = {}
       avgTimeCounter['title'] = operationAvgTimeName
-      avgTimeCounter['query'] = make_latency_metric_query(endpoint, group, operationAvgTimeName)
+      avgTimeCounter['query'] = [].append(make_latency_metric_query(endpoint, group, operationAvgTimeName))
       operationCounter.append(avgTimeCounter)
 
       metrics.append(operationCounter)
@@ -259,7 +259,8 @@ def generate_operation_metric_for_regionserver(regionserver):
     # then, append counter for NumOps
     num_ops_counter = {}
     num_ops_counter['title'] = operationName + '_histogram_num_ops'
-    num_ops_counter['query'] = make_ops_metric_query(endpoint, group, num_ops_counter['title'])
+    num_ops_counter['query'] = []
+    num_ops_counter['query'].append(make_ops_metric_query(endpoint, group, num_ops_counter['title']))
     counter.append(num_ops_counter)
 
     # lastly, append counters for percentile
