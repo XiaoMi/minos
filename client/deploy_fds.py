@@ -86,7 +86,7 @@ def generate_configs(args, host, job_name, instance_id):
     "galaxy-site.xml": galaxy_site_xml,
     "zookeeper.properties": zookeeper_properties,
     "mapred-site.xml": mapred_site_xml,
-    "yarn-site.xml": yarn_site_xml
+    "yarn-site.xml": yarn_site_xml,
     "passport.properties": passport_properties,
   }
   config_files.update(args.fds_config.configuration.raw_files)
