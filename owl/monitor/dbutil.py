@@ -384,8 +384,9 @@ def get_requests_distribution(owner):
   read_requests_dist = []
   write_requests_dist = []
   for region in owner.region_set.filter(last_attempt_time__gte = alive_time_threshold()).order_by('name'):
-    read_requests_dist.append((str(region), region.readRequestsCountPerSec))
-    write_requests_dist.append((str(region), region.writeRequestsCountPerSec))
+    region_id = region.get_region_id()
+    read_requests_dist.append((region_id, region.readRequestsCountPerSec))
+    write_requests_dist.append((region_id, region.writeRequestsCountPerSec))
 
   return (read_requests_dist, write_requests_dist)
 
@@ -393,8 +394,9 @@ def get_data_distribution(owner):
   memstore_size_dist = []
   storefile_size_dist = []
   for region in owner.region_set.filter(last_attempt_time__gte = alive_time_threshold()).order_by('name'):
-    memstore_size_dist.append((str(region), region.memStoreSizeMB))
-    storefile_size_dist.append((str(region), region.storefileSizeMB))
+    region_id = region.get_region_id()
+    memstore_size_dist.append((region_id, region.memStoreSizeMB))
+    storefile_size_dist.append((region_id, region.storefileSizeMB))
 
   return (memstore_size_dist, storefile_size_dist)
 

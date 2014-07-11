@@ -252,6 +252,15 @@ class Region(models.Model):
       return True
     return False
 
+  def get_region_id(self):
+    region_id = ""
+    try:
+      element_list = self.name.split(',')
+      region_id = element_list[-1].split('.')[1]
+    except Exception as e:
+      print "%s failed to get region id." % (self.name)
+    return region_id
+
   @staticmethod
   def get_encode_name_from_region_operation_metric_name(name):
     tokens = name.split('.')
