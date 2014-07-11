@@ -76,6 +76,9 @@ def generate_configs(args, host, job_name, instance_id):
     args.fds_config.configuration.generated_files["mapred-site.xml"])
   yarn_site_xml = deploy_utils.generate_site_xml(args,
     args.fds_config.configuration.generated_files["yarn-site.xml"])
+  passport_properties = deploy_utils.generate_properties_file(args,
+      args.fds_config.configuration.generated_files["passport.properties"])
+
   config_files = {
     "core-site.xml": core_site_xml,
     "hdfs-site.xml": hdfs_site_xml,
@@ -84,6 +87,7 @@ def generate_configs(args, host, job_name, instance_id):
     "zookeeper.properties": zookeeper_properties,
     "mapred-site.xml": mapred_site_xml,
     "yarn-site.xml": yarn_site_xml
+    "passport.properties": passport_properties,
   }
   config_files.update(args.fds_config.configuration.raw_files)
 
