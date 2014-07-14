@@ -8,7 +8,7 @@ import json
 
 DEFAULT_DATETIME = datetime.datetime(1970, 1, 1, tzinfo=timezone.utc)
 # If a cluster/job/task's last success time has passed this many seconds, it's
-# considered as fialed.
+# considered as failed.
 FAIL_TIME = 30
 
 # The item could be cluster, job, or task.
@@ -50,15 +50,15 @@ class Cluster(models.Model):
   active = models.BooleanField(default=True)
   # A text description.
   description = models.CharField(max_length=1024)
-  # The last attempt time to fetch metics, whether successful or failed.
+  # The last attempt time to fetch metrics, whether successful or failed.
   # It's the time of client initiating the request, not the time of client
   # receiving the response.
   last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
   # If the last attempt is successful.
   last_status = models.IntegerField(default=Status.ERROR)
-  # The status mesage of last attempt.
+  # The status message of last attempt.
   last_message = models.CharField(max_length=128)
-  # The last update time of this task's metics, must be successful.
+  # The last update time of this task's metrics, must be successful.
   # The definition is the same as last_attempt.
   last_success_time = models.DateTimeField(default=DEFAULT_DATETIME)
   # cluster version in format: "version, revision"
@@ -87,15 +87,15 @@ class Job(models.Model):
   running_tasks_count = models.IntegerField(default=0)
   # How many tasks in total.
   total_tasks_count = models.IntegerField(default=0)
-  # The last attempt time to fetch metics, whether successful or failed.
+  # The last attempt time to fetch metrics, whether successful or failed.
   # It's the time of client initiating the request, not the time of client
   # receiving the response.
   last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
   # If the last attempt is successful.
   last_status = models.IntegerField(default=Status.ERROR)
-  # The status mesage of last attempt.
+  # The status message of last attempt.
   last_message = models.CharField(max_length=128)
-  # The last update time of this task's metics, must be successful.
+  # The last update time of this task's metrics, must be successful.
   # The definition is the same as last_attempt.
   last_success_time = models.DateTimeField(default=DEFAULT_DATETIME)
 
@@ -117,15 +117,15 @@ class Task(models.Model):
   port = models.IntegerField()
   # The same as service.
   active = models.BooleanField(default=True)
-  # The last attempt time to fetch metics, whether successful or failed.
+  # The last attempt time to fetch metrics, whether successful or failed.
   # It's the time of client initiating the request, not the time of client
   # receiving the response.
   last_attempt_time = models.DateTimeField(default=DEFAULT_DATETIME)
   # If the last attempt is successful.
   last_status = models.IntegerField(default=Status.ERROR)
-  # The status mesage of last attempt.
+  # The status message of last attempt.
   last_message = models.CharField(max_length=128)
-  # The last update time of this task's metics, must be successful.
+  # The last update time of this task's metrics, must be successful.
   # The definition is the same as last_attempt.
   last_success_time = models.DateTimeField(default=DEFAULT_DATETIME)
   # The last metric values, encoded in json.

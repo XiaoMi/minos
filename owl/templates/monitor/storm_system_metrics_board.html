@@ -1,0 +1,35 @@
+{% extends "monitor/storm_base.html" %}
+
+{% block storm_content %}
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th>Topology ID</th>
+            <th>Worker</th>
+            <th>GC</th>
+            <th>Memory/heap</th>
+            <th>Memory/nonHeap</th>
+            <th>Start time</th>
+            <th>Uptime sec</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for storm_metric in storm_metrics %}
+            <tr>
+                {% for metrics in storm_metric.topology_metrics %}
+                    {% if forloop.counter == 1 %}
+                        <td clospan="{{ storm_metric.topology_metrics.size }}"><a href="/monitor/cluster/{{ cluster.id }}/topology/?topology_id={{ storm_metric.storm_id }}">{{ storm_metric.storm_id }}</a></td>
+                    {% endif %}
+
+                    <td>{{ metrics.worker_endpoint }}</td>
+                    <td>{{ metrics.GC }}</td>
+                    <td>{{ metrics.memory_heap }}</td>
+                    <td>{{ metrics.memory_non_heap }}</td>
+                    <td>{{ metrics.start_time_sec }}</td>
+                    <td>{{ metrics.uptime_sec }}</td>
+                {% endfor %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

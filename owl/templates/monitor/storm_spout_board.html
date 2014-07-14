@@ -1,0 +1,28 @@
+{% extends "monitor/storm_base.html" %}
+
+{% block storm_content %}
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th>Topology ID</th>
+            <th>Acked</th>
+            <th>Failed</th>
+            <th>Emitted</th>
+            <th>Transferred</th>
+            <th>Complete latency(ms)</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for metrics in storm_metrics %}
+            <tr>
+                <td><a href="/monitor/cluster/{{ cluster.id }}/topology/?topology_id={{ metrics.storm_id }}">{{ metrics.storm_id }}</a></td>
+                <td>{{ metrics.ack_count }}</td>
+                <td>{{ metrics.fail_count }}</td>
+                <td>{{ metrics.emit_count }}</td>
+                <td>{{ metrics.transfer_count }}</td>
+                <td>{{ metrics.complete_latency }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

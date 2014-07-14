@@ -157,6 +157,21 @@ def update_impala_cluster_status(cluster):
     job.last_message = "Too few running impalad!"
   cluster.last_status = max([job.last_status for job in cluster.jobs.itervalues()])
 
+def update_storm_cluster_status(cluster):
+  job = cluster.jobs["metricserver"]
+  if job.running_tasks_count < 1:
+    job.last_status = Status.ERROR
+    job.last_message = "No running StormMetricsServer!"
+
+  job = cluster.jobs["ui"]
+  for task in job.running_tasks.itervalues():
+    # update cluster entry
+    cluster.entry = '%s:%d' % (task.host, task.port)
+  if job.running_tasks_count < 1:
+    job.last_status = Status.ERROR
+    job.last_message = "No running Storm UI"
+  cluster.last_status = max([job.last_status for job in cluster.jobs.itervalues()])
+
 def update_cluster_status(cluster, start_time):
   cluster.jobs = {}
   cluster.last_attempt_time = datetime.datetime.utcfromtimestamp(
@@ -184,6 +199,7 @@ def update_cluster_status(cluster, start_time):
       "hbase": update_hbase_cluster_status,
       "yarn": update_yarn_cluster_status,
       "impala": update_impala_cluster_status,
+      "storm": update_storm_cluster_status,
   }
   service_handler[cluster.service.name](cluster)
 

@@ -87,12 +87,35 @@ def get_tasks_by_service(service_id=None):
   if service_id: filters["job__cluster__service"] = service_id
   return Task.objects.filter(**filters).all()
 
+def get_tasks_by_service_name(service_name):
+  filters = {
+    "active": True,
+    "job__cluster_service_name": service_name,
+  }
+  return Task.objects.filter(**filters).all()
+
 def get_task_by_host_and_port(host, port):
   try:
     return Task.objects.get(host = host, port = port)
   except:
     host = socket.gethostbyname(host)
     return Task.objects.get(host = host, port = port)
+
+# each cluster only have no more than one storm task
+def get_storm_task_by_cluster(cluster):
+  filters = {
+    "active": True,
+    "job__name": "metricserver",
+    "job__cluster": cluster,
+  }
+  return Task.objects.filter(**filters).all()
+
+def get_storm_task():
+  filters = {
+    "active": True,
+    "job__name": "metricserver",
+  }
+  return Task.objects.filter(**filters).all()
 
 def get_task(id):
   try:
@@ -252,12 +275,38 @@ def generate_perf_counter_for_cluster(result):
     generate_perf_counter_of_operation_metrics(hbase_cluster, group)
   return result
 
+def generate_perf_counter_for_storm(result):
+  storm_tasks = get_storm_task()
+  for storm_task in storm_tasks:
+    try:
+      json_metrics = json.loads(storm_task.last_metrics_raw)
+    except:
+      logger.warning("Failed to parse metrics of task:", storm_task)
+      return result
+
+    for storm_id , topology_metrics in json_metrics.iteritems():
+      endpoint = result.setdefault(storm_id, {})
+      for group_name, group_metrics in topology_metrics.iteritems():
+        if group_name != "Spout" and group_name != "Bolt":
+          continue
+
+        group = endpoint.setdefault(group_name, {})
+        for metrics_name, metrics in group_metrics.iteritems():
+
+          counter = group.setdefault(metrics_name, {})
+          counter['type'] = 0
+          counter['unit'] = ''
+          counter['value'] = metrics
+
+  return result
+
 def get_all_metrics():
   result = {}
   generate_perf_counter_for_task(result)
   generate_perf_counter_for_table(result)
   generate_perf_counter_for_regionserver(result)
   generate_perf_counter_for_cluster(result)
+  generate_perf_counter_for_storm(result)
   return result
 
 
@@ -526,5 +575,3 @@ def update_regions_for_master_metrics(regions):
   finally:
     if conn is not None:
       conn.close()
-
-

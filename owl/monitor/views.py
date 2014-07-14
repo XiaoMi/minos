@@ -15,9 +15,12 @@ from models import Table
 import datetime
 import dbutil
 import json
+import logging
 import metric_helper
 import time
 import owl_config
+
+logger = logging.getLogger(__name__)
 
 class Namespace:
   def __init__(self, **kwargs):
@@ -76,6 +79,8 @@ def show_cluster_task_board(request, id):
     return respond(request, 'monitor/hdfs_task_board.html', params)
   elif cluster.service.name == 'hbase':
     return respond(request, 'monitor/hbase_task_board.html', params)
+  elif cluster.service.name == 'storm':
+    return respond(request, 'monitor/storm_task_board.html', params)
   else:
     return respond(request, 'monitor/cluster.html', params)
 
@@ -259,6 +264,142 @@ def show_cluster_replication(request, id):
     'replication_metrics' : metric_helper.make_metrics_query_for_replication(peer_id_endpoint_map, peer_id_cluster_map),
   }
   return respond(request, 'monitor/hbase_replication.html', params)
+
+#url: /cluster/$id/?type="spout or bolt"
+def show_cluster_storm_builtin_metrics(request, id):
+  cluster = dbutil.get_cluster(id)
+  storm_tasks = dbutil.get_storm_task_by_cluster(cluster)
+  type = request.GET.get('type')
+
+  storm_metrics = [];
+  for storm_task in storm_tasks:
+    if storm_task.job.name != 'metricserver':
+      continue
+    try:
+      json_metrics = json.loads(storm_task.last_metrics_raw)
+    except:
+      logger.warning("Failed to parse metrics of task: %s", storm_task)
+      return HttpResponse('')
+
+    for storm_id, topology_metrics in json_metrics.iteritems():
+      element = {"storm_id": storm_id}
+      for group_name, group_metrics in topology_metrics.iteritems():
+        if group_name == type:
+          for metrics_name, metrics in group_metrics.iteritems():
+            metrics_name = metrics_name.lstrip('_')
+            metrics_name = metrics_name.replace('-', '_')
+            element[metrics_name] = metrics
+      storm_metrics.append(element)
+
+  params = {
+    'cluster' : cluster,
+    'storm_metrics' : storm_metrics,
+    }
+
+  if type == "Spout":
+    return respond(request, 'monitor/storm_spout_board.html', params)
+  elif type == "Bolt":
+    return respond(request, 'monitor/storm_bolt_board.html', params)
+  else:
+    return HttpResponse('Unsupported type: ' + type)
+
+#url: /cluster/$id/system_metrics/
+def show_cluster_storm_system_metrics(request, id):
+  cluster = dbutil.get_cluster(id)
+  storm_tasks = dbutil.get_storm_task_by_cluster(cluster)
+
+  storm_metrics = []
+  for storm_task in storm_tasks:
+    try:
+      json_metrics = json.loads(storm_task.last_metrics_raw)
+    except:
+      logger.warning("Failed to parse metrics of task: %s", storm_task.last_metrics_raw)
+      return HttpResponse('')
+
+    for storm_id, topology_metrics in json_metrics.iteritems():
+      topology_element = []
+      for group_name, group_metrics in topology_metrics.iteritems():
+        if group_name == "Spout" or group_name == "Bolt" or group_name == "User":
+         continue
+
+        element = {"worker_endpoint" : group_name};
+        gc_value = ""
+        memory_heap_value = ""
+        memory_non_heap_value = ""
+        for metrics_name, metrics in group_metrics.iteritems():
+          if metrics_name.find("GC/") == 0:
+            if len(gc_value) != 0:
+              gc_value += ", \n"
+            gc_value += metrics_name.lstrip("GC/") + ":" + str(metrics)
+
+          if metrics_name.find("memory/heap:") == 0:
+            if len(memory_heap_value) != 0:
+              memory_heap_value += ", \n"
+            memory_heap_value += metrics_name.lstrip("memory/heap:") + ":" + str(metrics)
+
+          if metrics_name.find("memory/nonHeap:") == 0:
+            if len(memory_non_heap_value) != 0:
+              memory_non_heap_value += ", \n"
+            memory_non_heap_value += metrics_name.lstrip("memory/nonHeap:") + ":" + str(metrics)
+
+          if metrics_name == "startTimeSecs":
+            element["start_time_sec"] = metrics
+          if metrics_name == "uptimeSecs":
+            element["uptime_sec"] = metrics
+        element["GC"] = gc_value
+        element["memory_heap"] = memory_heap_value
+        element["memory_non_heap"] = memory_non_heap_value
+        topology_element.append(element)
+
+      metrics = {
+        "storm_id" : storm_id,
+        "topology_metrics" : topology_element
+      }
+      storm_metrics.append(metrics)
+
+  params = {
+    'cluster' : cluster,
+    'storm_metrics' : storm_metrics,
+    }
+
+  return respond(request, 'monitor/storm_system_metrics_board.html', params)
+
+#url: /topology/$storm_id/?topology_id=xxx
+def show_storm_topology(request, id):
+  cluster = dbutil.get_cluster(id)
+
+  storm_id = request.GET.get('topology_id')
+  spout_keys = ["__ack-count", "__fail-count", "__emit-count", "__transfer-count", "__complete-latency",]
+  bolt_keys = ["__ack-count", "__fail-count", "__emit-count", "__transfer-count", "__process-latency", "__execute-count", "__execute-latency",]
+
+  storm_metrics = {"storm_id" : storm_id}
+  storm_graphs = []
+  for key in spout_keys:
+    title = storm_id + ":Spout:" + key
+    query = ("&m=sum:%s{host=%s,group=Spout}&o=" % (key, storm_id))
+    graph = {
+      "title" : title,
+      "query" : query,
+    }
+    storm_graphs.append(graph)
+
+  for key in bolt_keys:
+    title = storm_id + ":Bolt:" + key
+    query = ("&m=sum:%s{host=%s,group=Bolt}&o=" % (key, storm_id))
+    graph = {
+      "title" : title,
+      "query" : query,
+    }
+    storm_graphs.append(graph)
+
+  storm_metrics["graphs"] = storm_graphs
+  params = {
+    'cluster' : cluster,
+    'storm_metrics' : storm_metrics,
+  }
+
+  return respond(request, 'monitor/storm_topology.html', params)
+
 
 def is_test_table(table):
   if 'tst' in table.cluster.name:
