@@ -23,6 +23,7 @@ urlpatterns = patterns(
   url(r'^cluster/(?P<id>\d+)/replication/$', views.show_cluster_replication),
   url(r'^cluster/(?P<id>\d+)/builtin_metrics/$', views.show_cluster_storm_builtin_metrics),
   url(r'^cluster/(?P<id>\d+)/system_metrics/$', views.show_cluster_storm_system_metrics),
+  url(r'^cluster/(?P<id>\d+)/user_metrics/$', views.show_cluster_storm_user_metrics),
   url(r'^cluster/(?P<id>\d+)/topology/$', views.show_storm_topology),
 
   url(r'^job/(?P<id>[^/]+)/$', views.show_job),

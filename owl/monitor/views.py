@@ -270,7 +270,12 @@ def show_cluster_storm_builtin_metrics(request, id):
   cluster = dbutil.get_cluster(id)
   storm_tasks = dbutil.get_storm_task_by_cluster(cluster)
   type = request.GET.get('type')
+  type_dict = {
+    "Spout": "STORM_BUILTIN_SPOUT_METRICS",
+    "Bolt": "STORM_BUILTIN_BOLT_METRICS",
+  }
 
+  # builtin metrics format is <storm_id, STORM_BUILTIN_SPOUT_METRICS|STORM_BUILTIN_BOLT_METRICS, <key, value>>>
   storm_metrics = [];
   for storm_task in storm_tasks:
     if storm_task.job.name != 'metricserver':
@@ -284,7 +289,7 @@ def show_cluster_storm_builtin_metrics(request, id):
     for storm_id, topology_metrics in json_metrics.iteritems():
       element = {"storm_id": storm_id}
       for group_name, group_metrics in topology_metrics.iteritems():
-        if group_name == type:
+        if group_name == type_dict.get(type):
           for metrics_name, metrics in group_metrics.iteritems():
             metrics_name = metrics_name.lstrip('_')
             metrics_name = metrics_name.replace('-', '_')
@@ -308,6 +313,8 @@ def show_cluster_storm_system_metrics(request, id):
   cluster = dbutil.get_cluster(id)
   storm_tasks = dbutil.get_storm_task_by_cluster(cluster)
 
+  # system metrics format is <storm_id, STORM_SYSTEM_*, <key, value>>>;
+  # and key may in format: "GC/*", "memory/heap:*", ""memory/nonHeap:*" or ".*";
   storm_metrics = []
   for storm_task in storm_tasks:
     try:
@@ -319,9 +326,9 @@ def show_cluster_storm_system_metrics(request, id):
     for storm_id, topology_metrics in json_metrics.iteritems():
       topology_element = []
       for group_name, group_metrics in topology_metrics.iteritems():
-        if group_name == "Spout" or group_name == "Bolt" or group_name == "User":
-         continue
-
+        if group_name.find("STORM_SYSTEM_") != 0:
+          continue
+        group_name = group_name.lstrip("STORM_SYSTEM_")
         element = {"worker_endpoint" : group_name};
         gc_value = ""
         memory_heap_value = ""
@@ -364,6 +371,71 @@ def show_cluster_storm_system_metrics(request, id):
 
   return respond(request, 'monitor/storm_system_metrics_board.html', params)
 
+#url: /cluster/$id/user_metrics/
+def show_cluster_storm_user_metrics(request, id):
+  cluster = dbutil.get_cluster(id)
+  storm_tasks = dbutil.get_storm_task_by_cluster(cluster)
+
+  # user metrics format is <storm_id, component_id:task_id, <key, value>>>;
+  storm_metrics = {}
+  for storm_task in storm_tasks:
+    if storm_task.job.name != 'metricserver':
+      continue
+    try:
+      json_metrics = json.loads(storm_task.last_metrics_raw)
+    except:
+      logger.warning("Failed to parse metrics of task: %s", storm_task)
+      return HttpResponse('')
+
+    for storm_id, topology_metrics in json_metrics.iteritems():
+      topology_metrics_dict = storm_metrics.setdefault(storm_id, {})
+      for group_name, group_metrics in topology_metrics.iteritems():
+        if group_name.find("STORM_SYSTEM_") == 0 or group_name == "STORM_BUILTIN_SPOUT_METRICS" or group_name == "STORM_BUILTIN_BOLT_METRICS":
+          continue
+        group_component_id = group_name.split(":")[0]
+        group_task_id = group_name.split(":")[1]
+        group_metrics_dict = topology_metrics_dict.setdefault(group_component_id, {})
+        task_metrics_dict = group_metrics_dict.setdefault(group_task_id, {});
+
+        for metrics_name, metrics in group_metrics.iteritems():
+          task_metrics_dict[metrics_name] = metrics
+  # after upper handle, storm_metrics in format: <storm_id, <component_id, <task_id, <key, value>>>>
+
+  format_storm_metrics = {}
+  for storm_id in storm_metrics:
+    topology_metrics = storm_metrics.get(storm_id)
+    format_topology_metrics = format_storm_metrics.setdefault(storm_id, {})
+    for component_id in topology_metrics:
+      group_metrics = topology_metrics.get(component_id)
+      format_group_metrics = format_topology_metrics.setdefault(component_id, {})
+      # all the key_set for the task_id in the same component are same,
+      # here we just take the first task's key set if exist;
+      for task_id in group_metrics:
+        task_metrics = group_metrics.get(task_id)
+        key_set = task_metrics.keys()
+        break;
+
+      format_group_metrics["key_set"] = key_set[:]
+      format_group_metrics["key_set"].insert(0, "TaskID")
+      format_task_metrics_list = []
+      for task_id in group_metrics:
+        metrics = group_metrics.get(task_id)
+        format_metrics_list = [task_id]
+        for key in key_set:
+          format_metrics_list.append(metrics.get(key, " "))
+        format_task_metrics_list.append(format_metrics_list)
+      format_group_metrics["value_set"] = format_task_metrics_list
+
+  # after upper handle, format_storm_metrics in format:
+  # <storm_id, <component_id,<"key_set": [key1, key2, ...... ,keyn], "value_sets":
+  # [[v11, v12, ...... v1n], ...... ,[vm1, vm2, ...... vmn]]>>>
+  params = {
+    'cluster' : cluster,
+    'storm_metrics' : format_storm_metrics,
+    }
+
+  return respond(request, 'monitor/storm_user_board.html', params)
+
 #url: /topology/$storm_id/?topology_id=xxx
 def show_storm_topology(request, id):
   cluster = dbutil.get_cluster(id)
@@ -376,7 +448,7 @@ def show_storm_topology(request, id):
   storm_graphs = []
   for key in spout_keys:
     title = storm_id + ":Spout:" + key
-    query = ("&m=sum:%s{host=%s,group=Spout}&o=" % (key, storm_id))
+    query = ("&m=sum:%s{host=%s,group=STORM_BUILTIN_SPOUT_METRICS}&o=" % (key, dbutil.format_storm_name(storm_id)))
     graph = {
       "title" : title,
       "query" : query,
@@ -385,7 +457,7 @@ def show_storm_topology(request, id):
 
   for key in bolt_keys:
     title = storm_id + ":Bolt:" + key
-    query = ("&m=sum:%s{host=%s,group=Bolt}&o=" % (key, storm_id))
+    query = ("&m=sum:%s{host=%s,group=STORM_BUILTIN_BOLT_METRICS}&o=" % (key, dbutil.format_storm_name(storm_id)))
     graph = {
       "title" : title,
       "query" : query,

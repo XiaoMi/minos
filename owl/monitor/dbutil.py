@@ -275,6 +275,12 @@ def generate_perf_counter_for_cluster(result):
     generate_perf_counter_of_operation_metrics(hbase_cluster, group)
   return result
 
+def format_storm_name(name):
+  unsupported_character = ['/', '~', ':', '?', '!', ' ', '@', '#', '$', '%', '^', '&', '*'];
+  for character in unsupported_character:
+    name = name.replace(character, '_')
+  return name
+
 def generate_perf_counter_for_storm(result):
   storm_tasks = get_storm_task()
   for storm_task in storm_tasks:
@@ -285,15 +291,14 @@ def generate_perf_counter_for_storm(result):
       return result
 
     for storm_id , topology_metrics in json_metrics.iteritems():
-      endpoint = result.setdefault(storm_id, {})
+      endpoint = result.setdefault(format_storm_name(storm_id), {})
       for group_name, group_metrics in topology_metrics.iteritems():
-        if group_name != "Spout" and group_name != "Bolt":
+        if group_name.find("STORM_SYSTEM_") == 0:
           continue
 
-        group = endpoint.setdefault(group_name, {})
+        group = endpoint.setdefault(format_storm_name(group_name), {})
         for metrics_name, metrics in group_metrics.iteritems():
-
-          counter = group.setdefault(metrics_name, {})
+          counter = group.setdefault(format_storm_name(metrics_name), {})
           counter['type'] = 0
           counter['unit'] = ''
           counter['value'] = metrics
