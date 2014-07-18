@@ -175,27 +175,16 @@ class RegionOperationMetricAggregator:
 
   def produce_aggregate_task_in_thread(self, input_queue):
     try:
-      self.last_aggregate_time = time.time()
       input_queue.put(QueueTask(AGGREGATE_TASK_TYPE, None))
     except Exception as e:
       logger.warning("Failed to produce aggregate task %r", e)
     finally:
       self.schedule_next_aggregation(input_queue)
-    return
 
   def schedule_next_aggregation(self, input_queue):
-    next_time = self.last_aggregate_time + self.collector_config.period
-    end_time = time.time()
-    if end_time < next_time:
-      wait_time = next_time - end_time
-      logger.info(
-        "RegionOperationMetricAggregator waiting %f seconds for aggregation",
-        wait_time)
-      reactor.callFromThread(reactor.callLater, wait_time,
-        self.produce_aggregate_task, input_queue)
-    else:
-      reactor.callFromThread(self.produce_aggregate_task, input_queue)
-    return
+    wait_time = self.collector_config.period
+    reactor.callFromThread(reactor.callLater, wait_time,
+      self.produce_aggregate_task, input_queue)
 
 class StatusUpdater:
   """
@@ -214,11 +203,12 @@ class StatusUpdater:
     except Exception as e:
       logger.warning("Failed to produce status updater task %r", e)
     finally:
-      # reactor.callLater is NOT thread-safe but reactor.callFromThread is, so we
-      # put the callLater to the main loop.
-      reactor.callFromThread(reactor.callLater,
-        self.collector_config.period,
-        self.produce_status_update_task, input_queue)
+      self.schedule_next_status_update(input_queue)
+
+  def schedule_next_status_update(self, input_queue):
+    wait_time = self.collector_config.period
+    reactor.callFromThread(reactor.callLater, wait_time,
+      self.produce_status_update_task, input_queue)
 
 class Command(BaseCommand):
   args = ''
