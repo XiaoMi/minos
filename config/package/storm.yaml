@@ -1,0 +1,17 @@
+artifact: "apache-storm"
+
+version: "0.9.1-incubating-mdh1.1-SNAPSHOT"
+
+# the package source directory to run build command
+# can be a path relative to the current config file, or an absolute path.
+source: "../../../storm/"
+
+# the build command
+build: "mvn clean package -DskipTests"
+
+package:
+  # can be a path relative to the package source, or an absolute path.
+  # 
+  # if this is a directory (ending with a "/"), the pacakage filename would be
+  # [artifact]-[version].tar.gz. it could also be a path to a file.
+  tarball: "storm-dist/binary/target/"

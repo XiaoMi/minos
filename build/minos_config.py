@@ -9,6 +9,7 @@ CONFIG_DIR = deploy_config.get_deploy_config().get_config_dir()
 # client
 CLIENT_PREREQUISITE_PYTHON_LIBS = [
   ('configobj', 'configobj', '4.7.2'),
+  ('yaml', 'PyYAML', '3.11'),
 ]
 
 # tank
