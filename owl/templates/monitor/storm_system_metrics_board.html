@@ -18,15 +18,25 @@
             <tr>
                 {% for metrics in storm_metric.topology_metrics %}
                     {% if forloop.counter == 1 %}
-                        <td clospan="{{ storm_metric.topology_metrics.size }}"><a href="/monitor/cluster/{{ cluster.id }}/topology/?topology_id={{ storm_metric.storm_id }}">{{ storm_metric.storm_id }}</a></td>
+                        <tr>
+                            <td rowspan="{{ storm_metric.topology_metrics | length }}"><a href="/monitor/cluster/{{ cluster.id }}/topology/?topology_id={{ storm_metric.storm_id }}">{{ storm_metric.storm_id }}</a></td>
+                            <td>{{ metrics.worker_endpoint }}</td>
+                            <td>{{ metrics.GC }}</td>
+                            <td>{{ metrics.memory_heap }}</td>
+                            <td>{{ metrics.memory_non_heap }}</td>
+                            <td>{{ metrics.start_time_sec }}</td>
+                            <td>{{ metrics.uptime_sec }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td>{{ metrics.worker_endpoint }}</td>
+                            <td>{{ metrics.GC }}</td>
+                            <td>{{ metrics.memory_heap }}</td>
+                            <td>{{ metrics.memory_non_heap }}</td>
+                            <td>{{ metrics.start_time_sec }}</td>
+                            <td>{{ metrics.uptime_sec }}</td>
+                        </tr>
                     {% endif %}
-
-                    <td>{{ metrics.worker_endpoint }}</td>
-                    <td>{{ metrics.GC }}</td>
-                    <td>{{ metrics.memory_heap }}</td>
-                    <td>{{ metrics.memory_non_heap }}</td>
-                    <td>{{ metrics.start_time_sec }}</td>
-                    <td>{{ metrics.uptime_sec }}</td>
                 {% endfor %}
             </tr>
         {% endfor %}
