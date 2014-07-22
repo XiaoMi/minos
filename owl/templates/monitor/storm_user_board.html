@@ -7,24 +7,27 @@
         <p>
         {% for group_name, group_metrics in topology_metrics.items %}
             <h5>ComponentID : {{ group_name }}</h5>
-            <table class="table table-striped table-bordered">
-                <thead>
-                <tr>
-                    {% for key in group_metrics.key_set %}
-                        <th>{{ key }}</th>
-                    {% endfor %}
-                </tr>
-                </thead>
-                <tbody>
-                {% for value_set in group_metrics.value_set %}
+            {% for group_metric in group_metrics %}
+                <table class="table table-striped table-bordered">
+                    <thead>
                     <tr>
-                        {% for value in value_set %}
-                            <td>{{ value }}</td>
+                        {% for key in group_metric.key_set %}
+                        <th>{{ key }}</th>
                         {% endfor %}
                     </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                    {% for value_set in group_metric.value_set %}
+                        <tr>
+                            {% for value in value_set %}
+                            <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+            <hr>
         {% endfor %}
         </p>
     {% endfor %}

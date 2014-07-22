@@ -407,34 +407,44 @@ def show_cluster_storm_user_metrics(request, id):
     format_topology_metrics = format_storm_metrics.setdefault(storm_id, {})
     for component_id in topology_metrics:
       group_metrics = topology_metrics.get(component_id)
-      format_group_metrics = format_topology_metrics.setdefault(component_id, {})
-      # all the key_set for the task_id in the same component are same,
-      # here we just take the first task's key set if exist;
-      for task_id in group_metrics:
-        task_metrics = group_metrics.get(task_id)
-        key_set = task_metrics.keys()
-        break;
+      format_group_metrics = format_topology_metrics.setdefault(component_id, [])
 
-      format_group_metrics["key_set"] = key_set[:]
-      format_group_metrics["key_set"].insert(0, "TaskID")
-      format_task_metrics_list = []
       for task_id in group_metrics:
         metrics = group_metrics.get(task_id)
+        key_set, value_set = add_key_set_for_format_group_metrics(format_group_metrics, metrics.keys())
         format_metrics_list = [task_id]
         for key in key_set:
+          if key == "TaskID":
+            continue
           format_metrics_list.append(metrics.get(key, " "))
-        format_task_metrics_list.append(format_metrics_list)
-      format_group_metrics["value_set"] = format_task_metrics_list
+        value_set.append(format_metrics_list)
 
   # after upper handle, format_storm_metrics in format:
-  # <storm_id, <component_id,<"key_set": [key1, key2, ...... ,keyn], "value_sets":
-  # [[v11, v12, ...... v1n], ...... ,[vm1, vm2, ...... vmn]]>>>
+  # <storm_id, <component_id,[<"key_set": [key1, key2, ...... ,keyn], "value_sets":
+  # [[v11, v12, ...... v1n], ...... ,[vm1, vm2, ...... vmn]],> ...... <"key_set": [], "value_sets": []>] > >
   params = {
     'cluster' : cluster,
     'storm_metrics' : format_storm_metrics,
     }
 
   return respond(request, 'monitor/storm_user_board.html', params)
+
+def add_key_set_for_format_group_metrics(format_group_metrics, task_key_set):
+  key_set = task_key_set[:]
+  key_set.sort()
+  key_set.insert(0, "TaskID")
+
+  for group_metrics in format_group_metrics:
+    if cmp(key_set, group_metrics["key_set"]) == 0:
+      return (key_set, group_metrics["value_set"])
+
+  new_group_metrics = {
+    "key_set": key_set,
+    "value_set": [],
+  }
+  format_group_metrics.append(new_group_metrics)
+
+  return (new_group_metrics["key_set"], new_group_metrics["value_set"])
 
 #url: /topology/$storm_id/?topology_id=xxx
 def show_storm_topology(request, id):

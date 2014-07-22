@@ -275,10 +275,24 @@ def generate_perf_counter_for_cluster(result):
     generate_perf_counter_of_operation_metrics(hbase_cluster, group)
   return result
 
+def is_valid_storm_character(character):
+  if character >= '0' and character <= '9':
+    return True
+  if character >= 'a' and character <= 'z':
+    return True
+  if character >= 'A' and character <= 'Z':
+    return True
+  if character == '-' or character == '_' or character == '.' or character == '/':
+    return True
+
+  return False
+
 def format_storm_name(name):
-  unsupported_character = ['/', '~', ':', '?', '!', ' ', '@', '#', '$', '%', '^', '&', '*'];
-  for character in unsupported_character:
-    name = name.replace(character, '_')
+  character_list = list(name)
+  for character in character_list:
+    if not is_valid_storm_character(character):
+      name = name.replace(character, '_')
+
   return name
 
 def generate_perf_counter_for_storm(result):
