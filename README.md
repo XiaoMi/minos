@@ -186,7 +186,7 @@ Here are some handy ways to manage the cluster:
 
 Now it is time to configure the HDFS system.  Here we set up a testing HDFS cluster named `dptst-example`, whose configuration file will be named as `hdfs-dptst-example.cfg`, as explained in the naming conventions.
 
-You can edit `hdfs-dptst-example.cfg` under the `config/conf/hdfs` directory to configure the cluster.  The `hdfs-dptst-example.cfg` is well commented and self explained, so we will net explain more here.
+You can edit `hdfs-dptst-example.cfg` under the `config/conf/hdfs` directory to configure the cluster.  The `hdfs-dptst-example.cfg` is well commented and self explained, so we will not explain more here.
 
 #### Setting Up HDFS Cluster
 
