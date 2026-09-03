@@ -15,24 +15,24 @@ from tank_client import TankClient
 def check_directory(path):
   if not os.path.exists(path):
     Log.print_critical(
-        'Directory doesn''t exist: ' + path)
+        'Directory doesn\'t exist: ' + path)
   if not os.path.isdir(path):
     Log.print_critical(
         'NOT a directory: ' + path)
   if not os.access(path, os.X_OK):
     Log.print_critical(
-        'Can''t cd to: ' + path)
+        'Can\'t cd to: ' + path)
 
 def check_file(path):
   if not os.path.exists(path):
     Log.print_critical(
-        'File doesn''t exist: ' + path)
+        'File doesn\'t exist: ' + path)
   if not os.path.isfile(path):
     Log.print_critical(
         'NOT a file: ' + path)
   if not os.access(path, os.R_OK):
     Log.print_critical(
-        'Can''t read file: ' + path)
+        'Can\'t read file: ' + path)
 
 def get_package_config_dir():
   return deploy_config.get_deploy_config().get_config_dir() + '/package'
@@ -120,7 +120,7 @@ def upload_package(artifact, package_tarball, package_source):
   @param  artifact the artifact of the package
   @return dict     the package information return by the package server
   '''
-  Log.print_info("Uploading pacakge: %s" % package_tarball)
+  Log.print_info("Uploading package: %s" % package_tarball)
 
   revision = generate_package_revision(package_source)
   Log.print_success("Revision is: %s" % revision)
@@ -179,7 +179,7 @@ def parse_command_line():
       formatter_class=argparse.ArgumentDefaultsHelpFormatter,
       help='Install binary packages from local to remote package server.')
   sub_parser.add_argument('--make_current', action='store_false',
-      help='Make the installed pacakge as current version.')
+      help='Make the installed package as current version.')
   sub_parser.add_argument('package',
       help='The package name.')
   sub_parser.set_defaults(handler=process_command_install)
